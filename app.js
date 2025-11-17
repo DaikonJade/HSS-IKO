@@ -14,12 +14,7 @@ function unique(values){ return [...new Set(values.filter(v => v && v.toString()
 function isBlank(s){ return s === undefined || s === null || String(s).trim() === ''; }
 
 // Placeholder image (svg data URI)
-const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400">' +
-'<rect width="100%" height="100%" fill="#eee"/>' +
-'<text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text>' +
-'</svg>'
-);
+const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>');
 
 // Load CSV and initialize UI (uses your header names, Chinese title prioritized)
 fetch(DATA_FILE).then(r => r.text()).then(txt => {

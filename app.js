@@ -137,50 +137,7 @@ page = 1;
 window.renderPage && window.renderPage();
 };
 
-window.renderPage = function(){
-const start = (page - 1) * PAGE_SIZE;
-const slice = filtered.slice(start, start + PAGE_SIZE);
-const list = q('list');
-if (!list) return;
-list.innerHTML = '';
-slice.forEach(it => {
-const card = document.createElement('div'); card.className = 'card';
-const imgSrc = window.imgUrl(it);
-card.innerHTML =        <img class="thumb" src="${window.escapeAttr(imgSrc)}" alt="">       <div class="card-body">         <strong>${window.escapeHtml(it.title||it.jp_title||it.id)}</strong>         <div class="meta">${window.escapeHtml(it.type)} • ${window.escapeHtml(it.relevant_work)} • ${window.escapeHtml(it.relevant_character)}</div>         <div class="buttons">           <button class="detail-btn">Details</button>           <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${it.id}">${wishlist.has(it.id)?'Wanted':'Add'}</button>         </div>       </div>;
-list.appendChild(card);
-// Attach handlers
-const detailBtn = card.querySelector('.detail-btn');
-if (detailBtn) detailBtn.addEventListener('click', () => window.openDetail && window.openDetail(it.id));
-const wlBtn = card.querySelector('button[data-id]');
-if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn));
-});
-const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-const pageInfo = q('page-info');
-if (pageInfo) pageInfo.textContent = Page ${page} / ${max} — ${filtered.length} results;
-};
-
-window.toggleWishlist = function(id, btn){
-if (wishlist.has(id)){ wishlist.delete(id); if (btn){ btn.classList.remove('wishlist-btn'); btn.textContent = 'Add'; } }
-else { wishlist.add(id); if (btn){ btn.classList.add('wishlist-btn'); btn.textContent = 'Wanted'; } }
-localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
-};
-
-window.showWishlist = function(){
-const ids = Array.from(wishlist);
-const listItems = items.filter(it => ids.includes(it.id));
-if (listItems.length === 0) return window.openModal && window.openModal('<p>No items in your Wanted list yet.</p>');
-const html = listItems.map(it =>     <div style="display:flex;gap:10px;margin-bottom:10px">       <img src="${window.escapeAttr(window.imgUrl(it))}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:6px">       <div>         <strong>${window.escapeHtml(it.title||it.jp_title||it.id)}</strong>         <div class="small">${window.escapeHtml(it.type)} • ${window.escapeHtml(it.relevant_work)}</div>         <div style="margin-top:6px"><button class="ghost" data-remove="${it.id}">Remove</button></div>       </div>     </div>  ).join('');
-window.openModal && window.openModal(html);
-// attach remove handlers inside modal
-setTimeout(() => {
-document.querySelectorAll('[data-remove]').forEach(btn => {
-btn.addEventListener('click', () => {
-const id = btn.getAttribute('data-remove');
-window.removeFromWishlist && window.removeFromWishlist(id);
-});
-});
-}, 10);
-};
+paste the two replacement blocks again
 
 window.openModal = function(html){
 const modal = q('modal'); const content = q('modal-content');

@@ -267,7 +267,18 @@ window.closeModal = function(){
   modal.style.display = 'none';
   modal.setAttribute('aria-hidden', 'true');
 };
-
+// Ensure Close button hides the modal
+const closeBtn = document.getElementById('close-modal');
+if (closeBtn) {
+closeBtn.addEventListener('click', function () {
+if (typeof window.closeModal === 'function') {
+window.closeModal();
+} else {
+const m = document.getElementById('modal');
+if (m) { m.style.display = 'none'; m.setAttribute('aria-hidden', 'true'); }
+}
+});
+}
 window.escapeHtml = function(s){ if(!s) return ''; return String(s).replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); };
 window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'&quot;') : ''; };
 window.imgUrl = function(it){

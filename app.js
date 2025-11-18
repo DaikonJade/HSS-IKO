@@ -143,7 +143,7 @@ card.dataset.id = it.id;
 const imgSrc = window.imgUrl ? window.imgUrl(it) : '';
 card.innerHTML =        <img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">       <div class="card-body">         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>         <div class="meta">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work} • ${window.escapeHtml ? window.escapeHtml(it.relevant_character) : it.relevant_character}</div>         <div class="buttons">           <button class="detail-btn">Details</button>           <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${it.id}">${wishlist.has(it.id)?'Wanted':'Add'}</button>         </div>       </div>;
 list.appendChild(card);
-// per-card handlers (wishlist)
+// per-card wishlist handler
 const wlBtn = card.querySelector('button[data-id]');
 if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn));
 });
@@ -152,12 +152,31 @@ const pageInfo = q('page-info');
 if (pageInfo) pageInfo.textContent = Page ${page} / ${max} — ${filtered.length} results;
 };
 
+window.openDetail = function(id){
+if(!window.items) return;
+const it = window.items.find(x => x.id === id);
+if(!it) return;
+const img = window.imgUrl ? window.imgUrl(it) : '';
+const html =      <div style="display:flex;gap:12px;flex-wrap:wrap">       <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">       <div style="flex:1;min-width:220px">         <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>         <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>         <div style="margin-top:10px">${it.resource?来源: <a href="${window.escapeAttr?window.escapeAttr(it.resource):it.resource}" target="_blank">${window.escapeHtml?window.escapeHtml(it.resource):it.resource}</a>:''}</div>         <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>       </div>     </div>;
+if(window.openModal) window.openModal(html); else alert(it.title||it.id);
+};
+
 window.toggleWishlist = function(id, btn){
   if (wishlist.has(id)){ wishlist.delete(id); if (btn){ btn.classList.remove('wishlist-btn'); btn.textContent = 'Add'; } }
   else { wishlist.add(id); if (btn){ btn.classList.add('wishlist-btn'); btn.textContent = 'Wanted'; } }
   localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
 };
-
+const listEl = document.getElementById('list');
+if (listEl) {
+listEl.addEventListener('click', function (e) {
+const btn = e.target.closest('.detail-btn');
+if (!btn) return;
+const card = btn.closest('.card');
+const idBtn = card && card.querySelector('button[data-id]');
+const id = idBtn ? idBtn.getAttribute('data-id') : (card && card.dataset && card.dataset.id);
+if (id) window.openDetail && window.openDetail(id);
+});
+}
 window.showWishlist = function(){
 const ids = Array.from(wishlist);
 const listItems = items.filter(it => ids.includes(it.id));

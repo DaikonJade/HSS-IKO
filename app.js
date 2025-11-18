@@ -20,7 +20,6 @@ const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns=
 fetch(DATA_FILE).then(r => r.text()).then(txt => {
   const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
   items = parsed.data.map((row,i) => ({
-    (normalizes, trims, removes any leading $):
 id: ( (row['image_filename'] || row.image_filename || ('i'+i)) + '' ).toString().trim().replace(/^$/,''),
     title: ((row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字']) || '').toString().trim(),
     jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),

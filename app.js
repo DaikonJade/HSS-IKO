@@ -141,15 +141,14 @@ slice.forEach(it => {
 const card = document.createElement('div'); card.className = 'card';
 card.dataset.id = it.id;
 const imgSrc = window.imgUrl ? window.imgUrl(it) : '';
-card.innerHTML =        <img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">       <div class="card-body">         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>         <div class="meta">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work} • ${window.escapeHtml ? window.escapeHtml(it.relevant_character) : it.relevant_character}</div>         <div class="buttons">           <button class="detail-btn">Details</button>           <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${it.id}">${wishlist.has(it.id)?'Wanted':'Add'}</button>         </div>       </div>;
+card.innerHTML =        `<img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">       <div class="card-body">         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>         <div class="meta">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work} • ${window.escapeHtml ? window.escapeHtml(it.relevant_character) : it.relevant_character}</div>         <div class="buttons">           <button class="detail-btn">Details</button>           <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${it.id}">${wishlist.has(it.id)?'Wanted':'Add'}</button>         </div>       </div>`;
 list.appendChild(card);
-// per-card wishlist handler
 const wlBtn = card.querySelector('button[data-id]');
 if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn));
 });
 const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 const pageInfo = q('page-info');
-if (pageInfo) pageInfo.textContent = Page ${page} / ${max} — ${filtered.length} results;
+if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.length} results`;
 };
 
 window.openDetail = function(id){
@@ -157,7 +156,7 @@ if(!window.items) return;
 const it = window.items.find(x => x.id === id);
 if(!it) return;
 const img = window.imgUrl ? window.imgUrl(it) : '';
-const html =      <div style="display:flex;gap:12px;flex-wrap:wrap">       <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">       <div style="flex:1;min-width:220px">         <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>         <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>         <div style="margin-top:10px">${it.resource?来源: <a href="${window.escapeAttr?window.escapeAttr(it.resource):it.resource}" target="_blank">${window.escapeHtml?window.escapeHtml(it.resource):it.resource}</a>:''}</div>         <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>       </div>     </div>;
+const html =     `<div style="display:flex;gap:12px;flex-wrap:wrap">       <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">       <div style="flex:1;min-width:220px">         <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>         <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>         <div style="margin-top:10px">${it.resource ?`来源: <a href="${window.escapeAttr ? window.escapeAttr(it.resource) : it.resource}" target="_blank">${window.escapeHtml ? window.escapeHtml(it.resource) : it.resource}</a>` : ''}</div>         <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>       </div>     </div>`;
 if(window.openModal) window.openModal(html); else alert(it.title||it.id);
 };
 
@@ -181,9 +180,8 @@ window.showWishlist = function(){
 const ids = Array.from(wishlist);
 const listItems = items.filter(it => ids.includes(it.id));
 if (listItems.length === 0) return window.openModal && window.openModal('<p>No items in your Wanted list yet.</p>');
-const html = listItems.map(it =>     <div style="display:flex;gap:10px;margin-bottom:10px">       <img src="${window.escapeAttr ? window.escapeAttr(window.imgUrl(it)) : window.imgUrl(it)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:6px">       <div>         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>         <div style="margin-top:6px"><button class="ghost" data-remove="${it.id}">Remove</button></div>       </div>     </div>  ).join('');
+const html = listItems.map(it =>     `<div style="display:flex;gap:10px;margin-bottom:10px">       <img src="${window.escapeAttr ? window.escapeAttr(window.imgUrl(it)) : window.imgUrl(it)}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:6px">       <div>         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>         <div style="margin-top:6px"><button class="ghost" data-remove="${it.id}">Remove</button></div>       </div>     </div>`  ).join('');
 window.openModal && window.openModal(html);
-// attach remove handlers inside modal
 setTimeout(() => {
 document.querySelectorAll('[data-remove]').forEach(btn => {
 btn.addEventListener('click', () => {

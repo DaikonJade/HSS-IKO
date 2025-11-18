@@ -64,57 +64,50 @@ if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv â€
 });
 
 window.populateFilters = function(){
-  const types = unique(items.map(i => i.type));
-  const works = unique(items.map(i => i.relevant_work));
-  const chars = unique(items.map(i => i.relevant_character));
-  const imgs = unique(items.map(i => i.relevant_image));
-  const fill = (id, arr) => {
-    const sel = q(id);
-    if (!sel) return;
-    sel.innerHTML = '';
-    const opt = document.createElement('option'); opt.value = ''; opt.textContent = sel.getAttribute('data-all') || 'All'; sel.appendChild(opt);
-    arr.forEach(v => {
-      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
-    });
-  };
-  fill('filter-type', types);
-  fill('filter-work', works);
-  fill('filter-character', chars);
-  fill('filter-image', imgs);
+// collect tokens (arrays) from items
+const types = unique(items.map(i=>i.type)); // keep as single-select if you want
+const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
+const chars = unique((items||[]).flatMap(i=>i.relevant_character || []));
+const imgs = unique((items||[]).flatMap(i=>i.relevant_image || []));
+
+// fill the simple Type select if present
+const selType = q('filter-type');
+if(selType){
+selType.innerHTML = '<option value="">All Types</option>';
+types.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; selType.appendChild(o); });
+}
+
+// helper to render checkbox lists into a container
+function renderCheckboxes(containerId, tokens, label){
+const c = q(containerId);
+if(!c) return;
+c.innerHTML = '';
+// tools
+const tools = document.createElement('div');
+tools.className = 'controls';
+const allBtn = document.createElement('button'); allBtn.type='button'; allBtn.textContent='Select all';
+const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear';
+allBtn.onclick = ()=>{ c.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true); applyFilters(); };
+clearBtn.onclick = ()=>{ c.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false); applyFilters(); };
+tools.appendChild(allBtn); tools.appendChild(clearBtn);
+c.appendChild(tools);const list = document.createElement('div');
+list.style.maxHeight='220px'; list.style.overflow='auto';
+tokens.forEach(tok=>{
+  const id = containerId + '_opt_' + tok.replace(/\s+/g,'_').replace(/[^\w-]/g,'');
+  const labelEl = document.createElement('label');
+  labelEl.style.display = 'block';
+  labelEl.style.fontSize = '13px';
+  labelEl.style.cursor = 'pointer';
+  labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${tok}"> ${tok}`;
+  list.appendChild(labelEl);
+  labelEl.querySelector('input').addEventListener('change', ()=>applyFilters());
+});
+c.appendChild(list);}
+
+renderCheckboxes('filter-work-container', works, 'Works');
+renderCheckboxes('filter-character-container', chars, 'Characters');
+renderCheckboxes('filter-image-container', imgs, 'Images');
 };
-
-['filter-type','filter-work','filter-character','filter-image','search','sort'].forEach(id => {
-  const el = q(id);
-  if (!el) return;
-  el.addEventListener('change', () => { page = 1; window.applyFilters(); });
-  if (id === 'search') el.addEventListener('input', () => { page = 1; window.applyFilters(); });
-});
-
-const prevBtn = q('prev'), nextBtn = q('next');
-if (prevBtn) prevBtn.addEventListener('click', () => { if (page > 1) { page--; window.renderPage(); }});
-if (nextBtn) nextBtn.addEventListener('click', () => { const max = Math.ceil(filtered.length / PAGE_SIZE); if (page < max) { page++; window.renderPage(); }});
-
-q('open-wishlist') && q('open-wishlist').addEventListener('click', () => { window.showWishlist && window.showWishlist(); });
-q('export-wishlist') && q('export-wishlist').addEventListener('click', () => {
-  const arr = Array.from(wishlist);
-  const data = JSON.stringify(arr, null, 2);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-  a.download = 'wanted.json'; a.click();
-});
-q('import-wishlist') && q('import-wishlist').addEventListener('click', () => q('import-file') && q('import-file').click());
-q('import-file') && q('import-file').addEventListener('change', e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader(); r.onload = () => {
-    try {
-      const arr = JSON.parse(r.result);
-      wishlist = new Set(arr);
-      localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
-      alert('Imported wanted list (' + wishlist.size + ' items).');
-      window.applyFilters();
-    } catch (err) { alert('Invalid JSON'); }
-  }; r.readAsText(f);
-});
 
 window.removeFromWishlist = function(id){
   wishlist.delete(id); localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist))); window.applyFilters(); window.closeModal && window.closeModal();
@@ -122,33 +115,52 @@ window.removeFromWishlist = function(id){
 
 window.applyFilters = function(){
   const type = q('filter-type') ? q('filter-type').value : '';
-  const work = q('filter-work') ? q('filter-work').value : '';
-  const character = q('filter-character') ? q('filter-character').value : '';
-  const imageLabel = q('filter-image') ? q('filter-image').value : '';
-  const search = q('search') ? q('search').value.trim().toLowerCase() : '';
-  filtered = items.filter(it => {
-    if (type && it.type !== type) return false;
-    if (work && it.relevant_work !== work) return false;
-    if (character && it.relevant_character !== character) return false;
-    if (imageLabel && it.relevant_image !== imageLabel) return false;
-    if (search) {
-      const s = ((it.title||'') + ' ' + (it.jp_title||'') + ' ' + (it.description||'') + ' ' + (it.relevant_character||'') + ' ' + (it.relevant_work||'') + ' ' + (it.detailed||'')).toLowerCase();
-      if (!s.includes(search)) return false;
-    }
-    return true;
-  });
-  const sort = q('sort') ? q('sort').value : 'title';
-  filtered.sort((a,b) => {
-    const va = (a[sort]||'').toString(); const vb = (b[sort]||'').toString();
-    if (sort === 'release_date') {
-      const da = Date.parse(va) || 0; const db = Date.parse(vb) || 0;
-      return db - da;
-    }
-    return va.localeCompare(vb);
-  });
-  page = 1;
-  window.renderPage && window.renderPage();
+
+function checkedTokens(containerId){
+const c = q(containerId);
+if(!c) return [];
+return Array.from(c.querySelectorAll('input[type=checkbox]:checked')).map(ch=>ch.value);
+}
+const workSelected = checkedTokens('filter-work-container');
+const charSelected = checkedTokens('filter-character-container');
+const imgSelected = checkedTokens('filter-image-container');
+
+const search = q('search') ? q('search').value.trim().toLowerCase() : '';
+
+filtered = (items||[]).filter(it=>{
+if(type && it.type !== type) return false;// within-field: require all selected tags (AND). Change to .some for OR behavior.
+if(workSelected.length){
+  const have = (it.relevant_work||[]).map(v=>v.toLowerCase());
+  if(!workSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+}
+if(charSelected.length){
+  const have = (it.relevant_character||[]).map(v=>v.toLowerCase());
+  if(!charSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+}
+if(imgSelected.length){
+  const have = (it.relevant_image||[]).map(v=>v.toLowerCase());
+  if(!imgSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+}
+
+if(search){
+  const hay = ((it.title||'')+' '+(it.jp_title||'')+' '+(it.description||'')+' '+(it.relevant_work||'')+' '+(it.relevant_character||'')+' '+(it.detailed||'')).toLowerCase();
+  if(!hay.includes(search)) return false;
+}
+return true;});
+
+// same sorting logic
+const sort = q('sort') ? q('sort').value : 'title';
+filtered.sort((a,b)=>{
+const va = (a[sort]||'').toString(); const vb = (b[sort]||'').toString();
+if(sort==='release_date'){ const da = Date.parse(va)||0; const db = Date.parse(vb)||0; return db - da; }
+return va.localeCompare(vb);
+});
+
+page = 1;
+window.renderPage && window.renderPage();
 };
+
+
 
 window.renderPage = function(){
 const start = (page - 1) * PAGE_SIZE;

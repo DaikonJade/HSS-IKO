@@ -138,7 +138,7 @@ window.renderPage = function(){
   if (!list) return;
   list.innerHTML = '';
   slice.forEach(it => {
-    const card = document.createElement('div'); card.className = 'card';
+    const card = document.createElement('div'); card.className = 'card'; card.dataset.id = it.id;
     const imgSrc = window.imgUrl(it);
     card.innerHTML = `
       <img class="thumb" src="${window.escapeAttr(imgSrc)}" alt="">
@@ -166,7 +166,14 @@ window.toggleWishlist = function(id, btn){
   else { wishlist.add(id); if (btn){ btn.classList.add('wishlist-btn'); btn.textContent = 'Wanted'; } }
   localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
 };
-
+window.openDetail = function(id){
+if(!window.items) return;
+const it = window.items.find(x => x.id === id);
+if(!it) return;
+const img = window.imgUrl ? window.imgUrl(it) : '';
+const html =      <div style="display:flex;gap:12px;flex-wrap:wrap">       <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">       <div style="flex:1;min-width:220px">         <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>         <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work} • ${window.escapeHtml ? window.escapeHtml(it.relevant_character) : it.relevant_character}</div>         <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>         <div style="margin-top:10px">${it.resource?来源: <a href="${window.escapeAttr?window.escapeAttr(it.resource):it.resource}" target="_blank">${window.escapeHtml?window.escapeHtml(it.resource):it.resource}</a>:''}</div>         <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>       </div>     </div>;
+if(window.openModal) window.openModal(html); else alert(it.title||it.id);
+};
 window.showWishlist = function(){
   const ids = Array.from(wishlist);
   const listItems = items.filter(it => ids.includes(it.id));
@@ -214,3 +221,14 @@ window.imgUrl = function(it){
   if (!it || !it.image_filename) return PLACEHOLDER;
   return IMAGES_FOLDER + it.image_filename;
 };
+const listEl = document.getElementById('list');
+if(listEl){
+listEl.addEventListener('click', function(e){
+const btn = e.target.closest('.detail-btn');
+if(!btn) return;
+const card = btn.closest('.card');
+const idBtn = card && card.querySelector('button[data-id]');
+const id = idBtn ? idBtn.getAttribute('data-id') : (card && card.dataset && card.dataset.id);
+if(id) window.openDetail(id);
+});
+}

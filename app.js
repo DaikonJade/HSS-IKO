@@ -18,30 +18,41 @@ const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns=
 
 // Load CSV and initialize UI (uses your header names, Chinese title prioritized)
 fetch(DATA_FILE).then(r => r.text()).then(txt => {
-  const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
-  items = parsed.data.map((row,i) => ({
-id: ( (row['image_filename'] || row.image_filename || ('i'+i)) + '' ).toString().trim().replace(/^$/,''),
-    title: ((row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字']) || '').toString().trim(),
-    jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
-    type: (row['类型 Type'] || row['类型'] || row['Type'] || '').toString().trim(),
-    relevant_work: (row['相关作品 Relevant Work'] || row['相关作品'] || '').toString().trim(),
-    relevant_character: (row['相关人物 Relevant Character'] || row['相关人物'] || '').toString().trim(),
-    relevant_image: (row['相关柄图 Relevant Image'] || row['相关柄图'] || '').toString().trim(),
-    releaser: (row['Releaser/Event 发行商'] || row['发行商'] || '').toString().trim(),
-    release_date: (row['发行日期 Release Year/Date'] || row['发行日期'] || '').toString().trim(),
-    release_price: (row['发行价格 Release Price (JPY)'] || row['发行价格'] || '').toString().trim(),
-    release_area: (row['发行地区 Release Area'] || row['发行地区'] || '').toString().trim(),
-    resource: (row['信息来源 Resource'] || row['信息来源'] || '').toString().trim(),
-    detailed: (row['详细信息 Detailed Information'] || row['详细信息'] || '').toString().trim(),
-    description: (row['详细信息 Detailed Information'] || row['description'] || '').toString().trim(),
-    image_filename: (row['image_filename'] || '').toString().trim()
-  }));
-  if (typeof window.populateFilters === 'function') window.populateFilters();
-  if (typeof window.applyFilters === 'function') window.applyFilters();
-}).catch(err => {
-  console.error('Failed to load data.csv', err);
-  const listEl = document.getElementById('list');
-  if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
+// Parse CSV (safe if Papa is available)
+const parsedRows = (typeof Papa !== 'undefined')
+? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data
+: [];
+  // Normalize rows and set a reliable id for each item
+const normalized = parsedRows.map((row, i) => ({
+  id: ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^\$/, ''),
+  title: (row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+  jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+  type: (row['类型 Type'] || row['类型'] || row['Type'] || '').toString().trim(),
+  relevant_work: (row['相关作品 Relevant Work'] || row['相关作品'] || '').toString().trim(),
+  relevant_character: (row['相关人物 Relevant Character'] || row['相关人物'] || '').toString().trim(),
+  relevant_image: (row['相关柄图 Relevant Image'] || row['相关柄图'] || '').toString().trim(),
+  releaser: (row['Releaser/Event 发行商'] || row['发行商'] || '').toString().trim(),
+  release_date: (row['发行日期 Release Year/Date'] || row['发行日期'] || '').toString().trim(),
+  release_price: (row['发行价格 Release Price (JPY)'] || row['发行价格'] || '').toString().trim(),
+  release_area: (row['发行地区 Release Area'] || row['发行地区'] || '').toString().trim(),
+  resource: (row['信息来源 Resource'] || row['信息来源'] || '').toString().trim(),
+  detailed: (row['详细信息 Detailed Information'] || row['详细信息'] || '').toString().trim(),
+  description: (row['详细信息 Detailed Information'] || row['description'] || '').toString().trim(),
+  image_filename: (row['image_filename'] || row.image_filename || '').toString().trim()
+}));
+
+// Expose items globally and locally
+items = normalized;
+window.items = normalized;
+
+// Update UI if the handlers exist
+if (typeof window.populateFilters === 'function') window.populateFilters();
+if (typeof window.applyFilters === 'function') window.applyFilters();
+})
+.catch(err => {
+console.error('Failed to load data.csv', err);
+const listEl = document.getElementById('list');
+if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
 });
 
 window.populateFilters = function(){

@@ -12,6 +12,14 @@ let wishlist = new Set(JSON.parse(localStorage.getItem('wanted') || '[]'));
 function q(id){ return document.getElementById(id); }
 function unique(values){ return [...new Set(values.filter(v => v && v.toString().trim()))].sort(); }
 function isBlank(s){ return s === undefined || s === null || String(s).trim() === ''; }
+// Split a comma/semicolon/slash-separated tag string into normalized tokens
+function splitTags(s){
+if(!s) return [];
+return String(s)
+.split(/[,，;；/\|]+/)     // split on common separators (comma, fullwidth comma, semicolon, slash, pipe)
+.map(t => t.trim())        // trim whitespace
+.filter(Boolean);          // remove empty tokens
+}
 
 // Placeholder image (svg data URI) — single-line to avoid parser issues
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>');

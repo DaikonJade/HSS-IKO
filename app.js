@@ -150,7 +150,43 @@ const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 const pageInfo = q('page-info');
 if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.length} results`;
 };
-
+// Global openDetail (tolerant, lazy-loads CSV if items missing)
+window.openDetail = async function(id){
+try{
+if(!id) return console.warn('openDetail called without id');
+id = String(id).trim().replace(/^$/,'');
+// ensure items available
+if(!window.items || !window.items.length){
+if(typeof Papa === 'undefined'){
+console.warn('PapaParse not loaded; cannot lazy-load CSV');
+return;
+}
+const txt = await fetch('data.csv?_=' + Date.now()).then(r=>r.text());
+const parsed = Papa.parse(txt.trim(), {header:true, skipEmptyLines:true}).data;
+// normalize ids
+window.items = parsed.map((row,i)=>({
+...row,
+id: (row['image_filename'] || row.image_filename || ('i'+i) || '').toString().trim().replace(/^$/,'')
+}));
+// optionally refresh UI
+if(typeof window.populateFilters === 'function') window.populateFilters();
+if(typeof window.applyFilters === 'function') window.applyFilters();
+}
+// tolerant lookup (match normalized ids)
+const cleaned = id.replace(/^$/,'');
+let it = window.items.find(x => (x.id||'').toString().trim().replace(/^$/,'') === cleaned);
+if(!it){
+// fallback: substring match
+it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
+}
+if(!it){ console.warn('item not found', id); return; }
+const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
+const html =`<div style="display:flex;gap:12px;flex-wrap:wrap">         <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">         <div style="flex:1;min-width:220px">           <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>           <div class="small">${window.escapeHtml ? window.escapeHtml(it.type) : it.type} • ${window.escapeHtml ? window.escapeHtml(it.relevant_work) : it.relevant_work}</div>           <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>           <div style="margin-top:10px">             ${ it.resource                ?`来源: <a href="$${window.escapeAttr ? window.escapeAttr(it.resource) : it.resource}" target="_blank">$${window.escapeHtml ? window.escapeHtml(it.resource) : it.resource}</a>`: '' }           </div>           <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>         </div>       </div>`;
+if(window.openModal) window.openModal(html); else alert(it.title||it.id);
+}catch(e){
+console.error('openDetail error', e);
+}
+};
 window.openDetail = function(id){
 if(!window.items) return;
 const it = window.items.find(x => x.id === id);
@@ -191,7 +227,21 @@ window.removeFromWishlist && window.removeFromWishlist(id);
 });
 }, 10);
 };
-
+// Permanent event delegation for Details buttons (attach once)
+(function(){
+const listEl = document.getElementById('list');
+if(!listEl) return;
+if(listEl._detailDelegation) return; // already attached
+listEl._detailDelegation = function(e){
+const btn = e.target.closest('.detail-btn');
+if(!btn) return;
+const card = btn.closest('.card');
+const idBtn = card && card.querySelector('button[data-id]');
+const id = idBtn ? idBtn.getAttribute('data-id') : (card && card.dataset && card.dataset.id);
+if(id) window.openDetail && window.openDetail(id);
+};
+listEl.addEventListener('click', listEl._detailDelegation);
+})();
 window.openModal = function(html){
   const modal = q('modal'); const content = q('modal-content');
   if (!modal || !content) return;

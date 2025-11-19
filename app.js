@@ -20,8 +20,25 @@ function splitTags(s){
     .map(t => t.trim())        // trim whitespace
     .filter(Boolean);          // remove empty tokens
 }
-
-// Placeholder image (svg data URI)
+function normalizeRow(row, i){
+return {
+id: ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^$/, ''),
+title: (row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+type: splitTags(row['类型 Type'] || row['类型'] || row.type),
+relevant_work: splitTags(row['相关作品 Relevant Work'] || row['相关作品'] || row.relevant_work),
+relevant_character: splitTags(row['相关人物 Relevant Character'] || row['相关人物'] || row.relevant_character),
+relevant_image: splitTags(row['相关柄图 Relevant Image'] || row['相关柄图'] || row.relevant_image),
+releaser: splitTags(row['Releaser/Event 发行商'] || row['发行商'] || row.relevant_event),
+release_date: (row['发行日期 Release Year/Date'] || row['发行日期'] || '').toString().trim(),
+release_price: (row['发行价格 Release Price (JPY)'] || row['发行价格'] || '').toString().trim(),
+release_area: splitTags(row['发行地区 Release Area'] || row['发行地区'] || row.relevant_area),
+resource: (row['信息来源 Resource'] || row['信息来源'] || '').toString().trim(),
+detailed: (row['详细信息 Detailed Information'] || row['详细信息'] || '').toString().trim(),
+description: (row['详细信息 Detailed Information'] || row['description'] || '').toString().trim(),
+image_filename: (row['image_filename'] || row.image_filename || '').toString().trim()
+};
+}// Placeholder image (svg data URI)
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>');
 
 // Load CSV and initialize UI
@@ -218,7 +235,7 @@ window.openDetail = async function(id){
     if(!window.items || !window.items.length){
       const txt = await fetch('data.csv?_=' + Date.now()).then(r=>r.text());
       const parsed = Papa.parse(txt.trim(), {header:true, skipEmptyLines:true}).data;
-      window.items = parsed.map((row,i)=>({
+      window.items = normalizeRow(row,i))=>({
         ...row,
         id: (row['image_filename'] || row.image_filename || ('i'+i) || '').toString().trim()
       }));

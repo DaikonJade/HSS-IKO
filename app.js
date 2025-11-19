@@ -1,4 +1,4 @@
-// Configuration
+Æ’// Configuration
 const DATA_FILE = 'data.csv';
 const IMAGES_FOLDER = 'images/';
 const PAGE_SIZE = 24;
@@ -65,7 +65,7 @@ if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv â€
 
 window.populateFilters = function(){
 // collect tokens (arrays) from items
-const types = unique(items.map(i=>i.type)); // keep as single-select if you want
+const types = unique((items||[]).flatMap(i=>i.type || [])); // type is now array
 const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
 const chars = unique((items||[]).flatMap(i=>i.relevant_character || []));
 const imgs = unique((items||[]).flatMap(i=>i.relevant_image || []));
@@ -104,6 +104,7 @@ tokens.forEach(tok=>{
 });
 c.appendChild(list);}
 
+renderCheckboxes('filter-type-container', types);
 renderCheckboxes('filter-work-container', works, 'Works');
 renderCheckboxes('filter-character-container', chars, 'Characters');
 renderCheckboxes('filter-image-container', imgs, 'Images');
@@ -119,8 +120,7 @@ window.applyFilters = function(){
 function checkedTokens(containerId){
 const c = q(containerId);
 if(!c) return [];
-return Array.from(c.querySelectorAll('input[type=checkbox]:checked')).map(ch=>ch.value);
-}
+const typeSelected = checkedTokens('filter-type-container'); // uses same checkedTokens helper as before
 const workSelected = checkedTokens('filter-work-container');
 const charSelected = checkedTokens('filter-character-container');
 const imgSelected = checkedTokens('filter-image-container');
@@ -128,7 +128,10 @@ const imgSelected = checkedTokens('filter-image-container');
 const search = q('search') ? q('search').value.trim().toLowerCase() : '';
 
 filtered = (items||[]).filter(it=>{
-if(type && it.type !== type) return false;// within-field: require all selected tags (AND). Change to .some for OR behavior.
+if(typeSelected.length){
+const have = (it.type||[]).map(v=>v.toLowerCase());
+if(!typeSelected.every(tok => have.includes(tok.toLowerCase()))) return false;
+}
 if(workSelected.length){
   const have = (it.relevant_work||[]).map(v=>v.toLowerCase());
   if(!workSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;

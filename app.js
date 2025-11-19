@@ -35,7 +35,7 @@ const normalized = parsedRows.map((row, i) => ({
   id: ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^\$/, ''),
   title: (row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
   jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
-  type: (row['类型 Type'] || row['类型'] || row['Type'] || '').toString().trim(),
+  type: splitTags(row['类型 Type'] || row['类型'] || row.type),
   relevant_work: splitTags(row['相关作品 Relevant Work'] || row['相关作品'] || row.relevant_work),
   relevant_character: splitTags(row['相关人物 Relevant Character'] || row['相关人物'] || row.relevant_character),
   relevant_image: splitTags(row['相关柄图 Relevant Image'] || row['相关柄图'] || row.relevant_image),
@@ -51,7 +51,7 @@ const normalized = parsedRows.map((row, i) => ({
 
 // Expose items globally and locally
 items = normalized;
-window.items = normalized;
+window.items = normalizedRows;
 
 // Update UI if the handlers exist
 if (typeof window.populateFilters === 'function') window.populateFilters();

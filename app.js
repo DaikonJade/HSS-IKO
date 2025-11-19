@@ -221,7 +221,18 @@ if(window.openModal) window.openModal(html); else alert(it.title||it.id);
 console.error('openDetail error', e);
 }
 };
-window.openDetail = function(id){
+function goPage(delta){
+const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
+page = Math.min(max, Math.max(1, page + delta));
+// update buttons enabled state:
+const prev = document.getElementById('prev'), next = document.getElementById('next');
+if(prev) prev.disabled = (page <= 1);
+if(next) next.disabled = (page >= max);
+renderPage();
+}
+const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+document.getElementById('prev') && (document.getElementById('prev').disabled = page <= 1);
+document.getElementById('next') && (document.getElementById('next').disabled = page >= max);
 if(!window.items) return;
 const it = window.items.find(x => x.id === id);
 if(!it) return;

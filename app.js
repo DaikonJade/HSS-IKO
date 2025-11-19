@@ -251,21 +251,13 @@ window.openDetail = async function(id){
       it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
     }
     if(!it){ console.warn('item not found', id); return; }
-    const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
-    const typeText = (it.type || []).join(', ');
-    const workText = (it.relevant_work || []).join(', ');
+const typeText = (it.type || []).join(', ');
+const workText = (it.relevant_work || []).join(', ');
+const charText = (it.relevant_character || []).join(', ');
+const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
 
     const html = `
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt="">
-        <div style="flex:1;min-width:220px">
-          <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2>
-          <div class="small">${window.escapeHtml ? window.escapeHtml(typeText) : typeText} • ${window.escapeHtml ? window.escapeHtml(workText) : workText}</div>
-          <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p>
-          <div style="margin-top:10px">${it.resource ? `来源: <a href="${window.escapeAttr ? window.escapeAttr(it.resource) : it.resource}" target="_blank">${window.escapeHtml ? window.escapeHtml(it.resource) : it.resource}</a>` : ''}</div>
-          <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div>
-        </div>
-      </div>`;
+      <div style="display:flex;gap:12px;flex-wrap:wrap"> <img src="${window.escapeAttr ? window.escapeAttr(img) : img}" style="max-width:320px;width:100%;border-radius:6px" alt=""> <div style="flex:1;min-width:220px"> <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2> <div class="small">${window.escapeHtml ? window.escapeHtml(typeText) : typeText} • ${window.escapeHtml ? window.escapeHtml(workText) : workText}</div> ${ it.releaser && it.releaser.length ? `<div><strong>发行商：</strong>${window.escapeHtml ? window.escapeHtml(it.releaser.join(', ')) : it.releaser.join(', ')}</div>` : '' } ${ it.release_date ? `<div><strong>发行日期：</strong>${window.escapeHtml ? window.escapeHtml(it.release_date) : it.release_date}</div>` : '' } ${ it.release_price ? `<div><strong>发行价格：</strong>${window.escapeHtml ? window.escapeHtml(it.release_price) : it.release_price}</div>` : '' } ${ it.release_area && it.release_area.length ? `<div><strong>发行地区：</strong>${window.escapeHtml ? window.escapeHtml(it.release_area.join(', ')) : it.release_area.join(', ')}</div>` : '' } <p style="margin-top:12px">${window.escapeHtml ? window.escapeHtml(it.detailed||it.description||'') : (it.detailed||it.description||'')}</p> <div style="margin-top:10px">${it.resource ? `来源: <a href="${window.escapeAttr ? window.escapeAttr(it.resource) : it.resource}" target="_blank">${window.escapeHtml ? window.escapeHtml(it.resource) : it.resource}</a>` : ''}</div> <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${it.id}', this)">${wishlist.has(it.id)?'Wanted':'Add to Wanted'}</button></div> </div> </div>`;
     if(window.openModal) window.openModal(html); else alert(it.title||it.id);
   }catch(e){
     console.error('openDetail error', e);

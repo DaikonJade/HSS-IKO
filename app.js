@@ -206,6 +206,10 @@ window.renderPage = function(){
   const pageInfo = q('page-info');
   if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.length} results`;
 };
+const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+const prevBtn = q('prev'), nextBtn = q('next');
+if (prevBtn) prevBtn.disabled = (page <= 1);
+if (nextBtn) nextBtn.disabled = (page >= max);
 
 // Global openDetail (tolerant, lazy-loads CSV if items missing)
 window.openDetail = async function(id){
@@ -252,13 +256,9 @@ window.openDetail = async function(id){
 };
 
 function goPage(delta){
-  const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
-  page = Math.min(max, Math.max(1, page + delta));
-  // update buttons enabled state:
-  const prev = document.getElementById('prev'), next = document.getElementById('next');
-  if(prev) prev.disabled = (page <= 1);
-  if(next) next.disabled = (page >= max);
-  renderPage();
+const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
+page = Math.min(max, Math.max(1, page + delta));
+renderPage();
 }
 
 document.getElementById('prev') && (document.getElementById('prev').disabled = page <= 1);

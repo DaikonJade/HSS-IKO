@@ -187,13 +187,8 @@ if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.lengt
 // Global openDetail (tolerant, lazy-loads CSV if items missing)
 window.openDetail = async function(id){
 try{
-if(!id) return console.warn('openDetail called without id');
-id = String(id).trim().replace(/^$/,'');
-// ensure items available
-if(!window.items || !window.items.length){
-if(typeof Papa === 'undefined'){
-console.warn('PapaParse not loaded; cannot lazy-load CSV');
-return;
+<div style="display:flex;gap:12px;flex-wrap:wrap"> <img src="${window.escapeAttr?window.escapeAttr(img):img}" style="max-width:320px;width:100%;border-radius:6px" alt=""> <div style="flex:1;min-width:240px"> <h2 style="margin:0">${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</h2> <div class="small">${window.escapeHtml?window.escapeHtml(it.type?.join(', ')||''):''}</div> <div style="margin-top:10px"> ${it.jp_title ? `<div><strong>日文名字：</strong>${window.escapeHtml(it.jp_title)}</div>` : ''} ${it.title ? `<div><strong>中文名字：</strong>${window.escapeHtml(it.title)}</div>` : ''} ${it.releaser ? `<div><strong>发行商：</strong>${window.escapeHtml(it.releaser)}</div>` : ''} ${it.release_date ? `<div><strong>发行日期：</strong>${window.escapeHtml(it.release_date)}</div>` : ''} ${it.release_price ? `<div><strong>发行价格：</strong>${window.escapeHtml(it.release_price)}</div>` : ''} ${it.release_area ? `<div><strong>发行地区：</strong>${window.escapeHtml(it.release_area)}</div>` : ''} </div> <div style="margin-top:12px">${it.resource?`来源: <a href="${window.escapeAttr?window.escapeAttr(it.resource):it.resource}" target="_blank">${window.escapeHtml?window.escapeHtml(it.resource):it.resource}</a>`:''}</div> <div style="margin-top:12px"><p>${window.escapeHtml?window.escapeHtml(it.detailed||it.description||''):''}</p></div> </div> </div>`;
+
 }
 const txt = await fetch('data.csv?_=' + Date.now()).then(r=>r.text());
 const parsed = Papa.parse(txt.trim(), {header:true, skipEmptyLines:true}).data;

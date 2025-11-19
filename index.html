@@ -7,7 +7,7 @@
   <div id="list" class="grid"></div>
 
 <div class="pager">
-  <button id="prev" class="ghost">Prev</button>
+  <button id="prev" onclick="goPage(-1)">Prev</button>
   <div id="page-info" class="small"></div>
-  <button id="next" class="ghost">Next</button>
+  <button id="next" onclick="goPage(1)">Next</button>
 </div></main> <div id="modal" role="dialog" aria-hidden="true"> <div class="box"> <button id="close-modal" class="ghost" style="float:right">Close</button> <div id="modal-content"></div> </div> </div> <!-- PapaParse for client-side CSV parsing --> <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script> <script src="app.js"></script>

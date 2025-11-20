@@ -360,15 +360,89 @@ const openWishlistBtn = q('open-wishlist');
 if (openWishlistBtn) openWishlistBtn.addEventListener('click', renderWishlistModal);
 
 // Export button (same as in modal, but keep available)
-const exportBtn = q('export-wishlist');
-if (exportBtn) exportBtn.addEventListener('click', ()=>{
-const data = JSON.stringify(Array.from(wishlist), null, 2);
-const blob = new Blob([data], {type:'application/json'});
+// helper: load original CSV rows once per page load
+async function loadOriginalRows(){
+if (window._originalRows) return window.originalRows;
+const txt = await fetch('data.csv?=' + Date.now()).then(r => r.text());
+const parsed = (typeof Papa !== 'undefined')
+? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data
+: [];
+window._originalRows = parsed;
+return parsed;
+}
+
+// same id logic as normalizeRow, applied to raw CSV row + index
+function rowIdFromRaw(row, i){
+return ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^$/, '');
+}
+
+function downloadBlob(blob, filename){
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
-a.href = url; a.download = 'wanted.json';
-document.body.appendChild(a); a.click(); a.remove();
+a.href = url;
+a.download = filename;
+document.body.appendChild(a);
+a.click();
+a.remove();
 URL.revokeObjectURL(url);
+}
+
+const exportBtn = q('export-wishlist');
+if (exportBtn) exportBtn.addEventListener('click', async () => {
+if (!wishlist || wishlist.size === 0) {
+alert('Wishlist is empty — nothing to export.');
+return;
+}
+
+try {
+const originalRows = await loadOriginalRows();// Build a map from id -> rawRow(s). Use arrays in case of duplicate ids.
+const idToRows = new Map();
+(originalRows || []).forEach((r, i) => {
+  const id = rowIdFromRaw(r, i);
+  if (!idToRows.has(id)) idToRows.set(id, []);
+  idToRows.get(id).push(r);
+});
+
+// Collect rows in the same order as the wishlist
+const outRows = [];
+Array.from(wishlist).forEach(id => {
+  const rows = idToRows.get(id);
+  if (rows && rows.length) {
+    // if there are multiple rows with same id, include them all
+    rows.forEach(r => outRows.push(r));
+  } else {
+    // not found in data.csv — produce a minimal fallback row
+    outRows.push({ id });
+  }
+});
+
+// Use Papa.unparse if available; otherwise build a simple CSV
+let csv;
+if (typeof Papa !== 'undefined') {
+  csv = Papa.unparse(outRows);
+} else {
+  // simple fallback: compute headers from union of keys
+  const keys = Array.from(outRows.reduce((s, r) => {
+    Object.keys(r || {}).forEach(k => s.add(k));
+    return s;
+  }, new Set()));
+  const lines = [keys.join(',')];
+  outRows.forEach(r => {
+    lines.push(keys.map(k => {
+      const v = r[k] == null ? '' : String(r[k]).replace(/"/g, '""');
+      return `"${v}"`;
+    }).join(','));
+  });
+  csv = lines.join('\n');
+}
+
+// prepend BOM for Excel compatibility
+const bom = '\uFEFF';
+const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+downloadBlob(blob, 'wanted.csv');} catch (err) {
+console.error('Export failed', err);
+alert('Export failed: ' + (err && err.message ? err.message : err));
+}
 });
 
 // Import button & file input

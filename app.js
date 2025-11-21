@@ -414,7 +414,17 @@ if (exportBtn) exportBtn.addEventListener('click', () => exportWishlistCSV());
 let applyTimeout;
 const searchEl = q('search');
 if (searchEl) searchEl.addEventListener('input', () => { clearTimeout(applyTimeout); applyTimeout = setTimeout(() => window.applyFilters && window.applyFilters(), 250); });
-
+const sortEl = q('sort');
+if (sortEl) {
+// call applyFilters whenever user picks a different sort option
+sortEl.addEventListener('change', () => {
+window.applyFilters && window.applyFilters();
+});
+// optional: respond to keyboard changes immediately in some browsers
+sortEl.addEventListener('input', () => {
+window.applyFilters && window.applyFilters();
+});
+}
 function renderWishlistModal(){
 const modal = q('modal');
 const content = q('modal-content');

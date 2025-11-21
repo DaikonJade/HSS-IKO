@@ -1,4 +1,30 @@
-<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>HSS-IKO!</title><style> /* Multi-filter: compact summary + hidden tools until hover/focus for a clean desktop look */
+<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>HSS-IKO!</title><style>/* Heart wishlist button /
+.wishlist-toggle {
+display:inline-flex;
+align-items:center;
+justify-content:center;
+width:36px;
+height:36px;
+padding:6px;
+border-radius:8px;
+border:0;
+background:transparent;
+cursor:pointer;
+transition: transform .12s ease;
+}
+.wishlist-toggle svg { width:20px; height:20px; display:block; }
+/ outline: stroke visible, no fill /
+.wishlist-toggle svg .heart-shape { fill: none; stroke: #666; stroke-width:1.6; transition: fill .18s ease, stroke .12s ease, transform .12s ease; }
+/ hovered outline emphasis /
+.wishlist-toggle:hover svg .heart-shape { stroke: #2563eb; transform: scale(1.05); }
+/ when in wishlist: filled red /
+.wishlist-toggle.in svg .heart-shape { fill: #ff6b6b; stroke: #ff6b6b; }
+/ slight pop animation when toggled (via class .pop briefly) /
+.wishlist-toggle.pop { transform: scale(1.08); transition: transform .16s ease; }
+/ accessible visually-hidden helper (optional) */
+.visually-hidden { position:absolute !important; height:1px; width:1px; overflow:hidden; clip:rect(1px,1px,1px,1px); white-space:nowrap; }
+
+ /* Multi-filter: compact summary + hidden tools until hover/focus for a clean desktop look */
 .multi-filter {
 padding: 6px;
 background: #fff;

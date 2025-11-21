@@ -416,15 +416,80 @@ const searchEl = q('search');
 if (searchEl) searchEl.addEventListener('input', () => { clearTimeout(applyTimeout); applyTimeout = setTimeout(() => window.applyFilters && window.applyFilters(), 250); });
 
 function renderWishlistModal(){
-  const listIds = Array.from(wishlist);
-  const rows = listIds.map(id => {
-    const it = items.find(x=>x.id===id) || { id };
-    const title = it.title || it.jp_title || it.id;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee"><div style="flex:1">${window.escapeHtml(title)}</div><div>onclick="window.openDetail('${window.escapeAttr ? window.escapeAttr(id) : id}')">详情</button> <button onclick="window.removeFromWishlist('${window.escapeAttr(id)}')">Remove</button></div></div>`;
-  }).join('') || '<div>No items in your Wishlist.</div>';
-  const html = `<div><h3>Wishlist (${listIds.length})</h3>${rows}<div style="margin-top:12px"><button id="download-wishlist">Export Wishlist</button></div></div>`;
-  window.openModal && window.openModal(html);
-  setTimeout(()=>{ const dl = q('download-wishlist'); if (dl) dl.addEventListener('click', () => exportWishlistCSV()); }, 50);
+const modal = q('modal');
+const content = q('modal-content');
+if (!modal || !content) return;
+// clear previous
+content.innerHTML = '';
+
+const container = document.createElement('div');
+
+// Title
+const h = document.createElement('h3');
+h.textContent =`Wishlist (${wishlist.size})`;
+container.appendChild(h);
+
+// List items
+if (wishlist.size === 0) {
+const empty = document.createElement('div');
+empty.textContent = 'No items in your Wishlist.';
+container.appendChild(empty);
+} else {
+Array.from(wishlist).forEach(id => {
+const it = items.find(x => x.id === id) || { id };const row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.alignItems = 'center';
+  row.style.gap = '8px';
+  row.style.padding = '6px 0';
+  row.style.borderBottom = '1px solid #eee';
+
+  const left = document.createElement('div');
+  left.style.flex = '1';
+  left.textContent = it.title || it.jp_title || it.id;
+
+  const right = document.createElement('div');
+
+  const detailsBtn = document.createElement('button');
+  detailsBtn.type = 'button';
+  detailsBtn.textContent = '详情';
+  detailsBtn.addEventListener('click', () => {
+    // keep modal open or close first depending on UX; here we open details and leave modal open
+    window.openDetail && window.openDetail(id);
+  });
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = 'Remove';
+  removeBtn.addEventListener('click', () => {
+    window.removeFromWishlist && window.removeFromWishlist(id);
+    // refresh the modal contents
+    renderWishlistModal();
+  });
+
+  right.appendChild(detailsBtn);
+  right.appendChild(removeBtn);
+
+  row.appendChild(left);
+  row.appendChild(right);
+  container.appendChild(row);
+});}
+
+// Export button row
+const exportRow = document.createElement('div');
+exportRow.style.marginTop = '12px';
+const exportBtn = document.createElement('button');
+exportBtn.type = 'button';
+exportBtn.id = 'download-wishlist';
+exportBtn.textContent = 'Export Wishlist';
+exportBtn.addEventListener('click', () => exportWishlistCSV());
+exportRow.appendChild(exportBtn);
+container.appendChild(exportRow);
+
+content.appendChild(container);
+
+// show modal
+modal.style.display = 'flex';
+modal.setAttribute('aria-hidden', 'false');
 }
 
 const openWishlistBtn = q('open-wishlist');

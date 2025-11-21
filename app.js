@@ -226,7 +226,74 @@ window.renderPage = function(){
   if (nextBtn) nextBtn.disabled = (page >= max);
   const pageInfo = q('page-info'); if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.length} results`;
 };
+// Make .multi-filter collapsible on small screens
+function makeFiltersCollapsible() {
+if (!window.matchMedia) return;
+const mq = window.matchMedia('(max-width:600px)');
+function apply() {
+const should = mq.matches;
+document.querySelectorAll('.multi-filter').forEach(container => {
+// if we already added a summary, skip adding again
+if (container._hasSummary) {
+// but ensure collapsed state appropriate on resize
+if (!should) container.classList.remove('collapsed');
+return;
+}
+// create a summary header (visible on mobile)
+const summary = document.createElement('div');
+summary.className = 'summary';
+const label = document.createElement('span');
+label.className = 'label';
+label.textContent = container.getAttribute('aria-label') || 'Filter';
+const chev = document.createElement('button');
+chev.type = 'button';
+chev.className = 'chev';
+chev.setAttribute('aria-expanded', 'true');
+chev.textContent = '▾';
+summary.appendChild(label);
+summary.appendChild(chev);
+// Insert the summary at the top of container
+container.prepend(summary);
+container._hasSummary = true;
+// wrap the existing controls + list in a wrapper so we can hide them with CSS
+  const wrapper = document.createElement('div');
+  wrapper.className = 'multi-filter-list';
+  // move existing children except the newly inserted summary into wrapper
+  while (container.children.length > 1) {
+    wrapper.appendChild(container.children[1]);
+  }
+  container.appendChild(wrapper);
 
+  // toggle handler
+  function setCollapsed(collapsed) {
+    if (collapsed) {
+      container.classList.add('collapsed');
+      chev.textContent = '▸';
+      chev.setAttribute('aria-expanded', 'false');
+    } else {
+      container.classList.remove('collapsed');
+      chev.textContent = '▾';
+      chev.setAttribute('aria-expanded', 'true');
+    }
+  }
+  // initialize collapsed (start collapsed to save space)
+  setCollapsed(true);
+
+  // click summary to toggle
+  summary.addEventListener('click', () => {
+    setCollapsed(!container.classList.contains('collapsed'));
+  });
+});
+  }
+mq.addListener(apply);
+apply();
+}
+// call it once (after populateFilters has run)
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', () => { makeFiltersCollapsible(); });
+} else {
+makeFiltersCollapsible();
+}
 window.openDetail = async function(id){
   try{
     if(!window.items || !window.items.length){

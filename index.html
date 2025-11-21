@@ -124,7 +124,36 @@ color: #555;
 margin-top: 6px;
 margin-bottom: 10px; /* <-- added space below the type */
 }
-
+/* Wishlist modal button tweaks /
+#modal .box .details-btn {
+padding: 6px 10px;
+border-radius: 6px;
+border: 0;
+background: #2563eb;
+color: #fff;
+cursor: pointer;
+margin-right: 8px;
+}
+#modal .box .remove-btn {
+padding: 6px 10px;
+border-radius: 6px;
+background: transparent;
+color: #ef4444;              / red text /
+border: 1px solid #ef4444;   / red outline /
+cursor: pointer;
+}
+#modal .box .remove-btn:hover {
+background: #fee2e2; / pale red */
+}
+#modal .box #download-wishlist {
+padding: 8px 12px;
+border-radius: 6px;
+background: #2563eb;
+color: #fff;
+border: 0;
+cursor: pointer;
+}
+#modal .box button { font-size: 14px; }
 .buttons {
 display: flex;
 gap: 10px;        /* slightly larger horizontal gap between buttons */
@@ -182,7 +211,7 @@ button.wishlist-toggle.pop { transform: scale(1.08); transition: transform .16s 
 button.wishlist-toggle:focus { outline: 3px solid rgba(37,99,235,0.12); outline-offset: 2px; }
 
 </style> </head> <body> <header> <div class="container"> <div style="display:flex;align-items:center;justify-content:space-between"> <h1 style="margin:0;font-size:20px">和山山 IKO!</h1> <div class="topbar"> <button id="open-wishlist" class="ghost">心愿单</button> <button id="export-wishlist" class="ghost">导出心愿单</button></div> </div> </div> </header> <main class="container"> <div class="controls"> <input id="search" type="search" placeholder="输入关键词搜索" style="flex:1" /><!-- multi-select checkbox containers (works, characters, images) --> <div id="filter-type-container" class="multi-filter" aria-label="类型"></div> <div id="filter-work-container" class="multi-filter" aria-label="作品"></div> <div id="filter-character-container" class="multi-filter" aria-label="人物"></div> <div id="filter-image-container" class="multi-filter" aria-label="柄图"></div>
-<select id="sort"><option value="title">Sort: Title</option><option value="type">Sort: Type</option><option value="release_date">Sort: Release Date</option></select>
+<select id="sort"><option value="title">排序：名称 A-Z</option><option value="type">排序：类型 A-Z</option><option value="release_date">排序：发行日期 最新-古早</option></select>
 
 </div>
   <div id="list" class="grid"></div>

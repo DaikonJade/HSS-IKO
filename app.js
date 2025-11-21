@@ -75,29 +75,44 @@ window.populateFilters = function(){
 function renderCheckboxes(containerId, tokens){
 const c = q(containerId);
 if(!c) return;
-c.innerHTML = '';
+
+// remove any old summary/wrapper to avoid duplicates
+const oldSummary = c.querySelector('.summary');
+if (oldSummary) oldSummary.remove();
+const oldWrapper = c.querySelector('.multi-filter-list');
+if (oldWrapper) oldWrapper.remove();
+
+// create summary header (for mobile toggling)
+const summary = document.createElement('div');
+summary.className = 'summary';
+const label = document.createElement('span');
+label.className = 'label';
+label.textContent = c.getAttribute('aria-label') || 'Filter';
+const chev = document.createElement('button');
+chev.type = 'button';
+chev.className = 'chev';
+chev.setAttribute('aria-expanded', 'true');
+chev.textContent = '▾';
+summary.appendChild(label);
+summary.appendChild(chev);
+
+// wrapper that will contain tools + list (hidden when .collapsed)
+const wrapper = document.createElement('div');
+wrapper.className = 'multi-filter-list';
 
 // tools
 const tools = document.createElement('div');
 tools.className = 'controls';
-const allBtn = document.createElement('button');
-allBtn.type = 'button';
-allBtn.textContent = 'Select all';
-const clearBtn = document.createElement('button');
-clearBtn.type = 'button';
-clearBtn.textContent = 'Clear';
-// start disabled until any checkbox is checked
-clearBtn.disabled = true;
-
+const allBtn = document.createElement('button'); allBtn.type='button'; allBtn.textContent='Select all';
+const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear';
+clearBtn.disabled = true; // will be updated below
 tools.appendChild(allBtn);
 tools.appendChild(clearBtn);
-c.appendChild(tools);
 
+// list of checkboxes
 const list = document.createElement('div');
-list.style.maxHeight='220px';
-list.style.overflow='auto';
+list.style.maxHeight='220px'; list.style.overflow='auto';
 
-// helper to update clear button state
 function updateClearState(){
 const anyChecked = Array.from(list.querySelectorAll('input[type=checkbox]')).some(ch => ch.checked);
 clearBtn.disabled = !anyChecked;
@@ -109,36 +124,45 @@ const labelEl = document.createElement('label');
 labelEl.style.display = 'block';
 labelEl.style.fontSize = '13px';
 labelEl.style.cursor = 'pointer';
-labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
+labelEl.innerHTML =`<input type="checkbox" id="${id}" value="${window.escapeHtml ? window.escapeHtml(tok) : tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
 list.appendChild(labelEl);
 const ch = labelEl.querySelector('input');
 ch.addEventListener('change', ()=>{ updateClearState(); applyFilters(); });
 });
 
-c.appendChild(list);
+// assemble wrapper
+wrapper.appendChild(tools);
+wrapper.appendChild(list);
 
-// Select all behavior: check all boxes and enable Clear
+// insert summary and wrapper into container
+c.appendChild(summary);
+c.appendChild(wrapper);
+
+// select all behavior
 allBtn.onclick = ()=>{
 list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true);
 updateClearState();
 applyFilters();
 };
-
-// Clear behavior: uncheck all and disable Clear
+// clear behavior
 clearBtn.onclick = ()=>{
 list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false);
 updateClearState();
 applyFilters();
 };
 
-// ensure initial state correct
+// collapsed toggle for mobile: start collapsed
+function setCollapsed(collapsed){
+if (collapsed){ c.classList.add('collapsed'); chev.textContent = '▸'; chev.setAttribute('aria-expanded', 'false'); }
+else { c.classList.remove('collapsed'); chev.textContent = '▾'; chev.setAttribute('aria-expanded', 'true'); }
+}
+setCollapsed(true);
+summary.addEventListener('click', ()=> setCollapsed(!c.classList.contains('collapsed')));
+
+// initial clear state
 updateClearState();
 }
-  renderCheckboxes('filter-type-container', types);
-  renderCheckboxes('filter-work-container', works);
-  renderCheckboxes('filter-character-container', chars);
-  renderCheckboxes('filter-image-container', imgs);
-};
+
 
 window.removeFromWishlist = function(id){
   wishlist.delete(id);

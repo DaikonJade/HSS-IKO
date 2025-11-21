@@ -11,6 +11,28 @@ border:0;
 background:transparent;
 cursor:pointer;
 transition: transform .12s ease;
+}button.wishlist-toggle svg {
+width: 20px;
+height: 20px;
+display: block;
+}
+button.wishlist-toggle svg .heart-shape {
+fill: none !important;
+stroke: #666 !important;
+stroke-width: 1.6;
+stroke-linecap: round;
+stroke-linejoin: round;
+vector-effect: non-scaling-stroke; /* keeps stroke thickness consistent */
+transition: fill .18s ease, stroke .12s ease, transform .12s ease;
+}
+button.wishlist-toggle.in svg .heart-shape {
+fill: #ff6b6b !important;
+stroke: #ff6b6b !important;
+}
+button.wishlist-toggle:hover svg .heart-shape,
+button.wishlist-toggle:focus svg .heart-shape {
+stroke: #2563eb !important;
+transform: scale(1.06);
 }
 .wishlist-toggle svg { width:20px; height:20px; display:block; }
 / outline: stroke visible, no fill /

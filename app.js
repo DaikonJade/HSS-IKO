@@ -211,16 +211,10 @@ window.renderPage = function(){
     const card = document.createElement('div'); card.className = 'card'; card.dataset.id = it.id;
     const imgSrc = window.imgUrl ? window.imgUrl(it) : '';
     const typeText = (it.type || []).join(', ');
-    card.innerHTML = `
-      <img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">
-      <div class="card-body">
-        <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>
-        <div class="meta">${window.escapeHtml ? window.escapeHtml(typeText) : typeText}</div>
-        <div class="buttons">
-          <button class="detail-btn" aria-label="查看详情">详情</button>
-          <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}">${wishlist.has(it.id)?'In my wishlist':'Add to my wishlist'}</button>
-        </div>
-      </div>`;
+card.innerHTML = `
+<img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">
+
+<div class="card-body"> <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong> <div class="meta">${window.escapeHtml ? window.escapeHtml(typeText) : typeText}</div> <div class="buttons"> <button class="detail-btn" aria-label="查看详情">详情</button> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21s-7.2-4.35-9.2-6.35C1.1 12.6 3.2 8.6 6.8 7.1 8.2 6.5 9.8 6.9 11 7.8c1.2-.9 2.8-1.3 4.2-.7 3.6 1.5 5.7 5.5 3.9 7.6C19.2 16.65 12 21 12 21z"/> </svg> </button> </div> </div>`; 
     list.appendChild(card);
     const wlBtn = card.querySelector('button[data-id]');
     if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn));
@@ -305,7 +299,7 @@ window.openDetail = async function(id){
           ${detailsHtml}
           <p style="margin-top:12px">${window.escapeHtml(it.detailed||it.description||'')}</p>
           <div style="margin-top:10px">${it.resource ? `来源: <a href="${window.escapeAttr(it.resource)}" target="_blank">${window.escapeHtml(it.resource)}</a>` : ''}</div>
-          <div style="margin-top:12px"><button onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr(it.id)}', this)">${wishlist.has(it.id)?'In my wishlist':'Add to my wishlist'}</button></div>
+          <div style="margin-top:12px"> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21s-7.2-4.35-9.2-6.35C1.1 12.6 3.2 8.6 6.8 7.1 8.2 6.5 9.8 6.9 11 7.8c1.2-.9 2.8-1.3 4.2-.7 3.6 1.5 5.7 5.5 3.9 7.6C19.2 16.65 12 21 12 21z"/> </svg> </button> </div>
         </div>
       </div>`;
     if(window.openModal) window.openModal(html); else alert(it.title||it.id);
@@ -345,15 +339,31 @@ const closeBtn = q('close-modal');
 if (closeBtn) closeBtn.addEventListener('click', () => window.closeModal && window.closeModal());
 
 window.toggleWishlist = function(id, btn){
-  if (wishlist.has(id)){
-    wishlist.delete(id);
-    if (btn){ btn.classList.remove('wishlist-btn'); btn.textContent = 'Add to my wishlist'; }
-  } else {
-    wishlist.add(id);
-    if (btn){ btn.classList.add('wishlist-btn'); btn.textContent = 'In my wishlist'; }
-  }
-  localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
-  renderPage();
+// locate button if not provided
+const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);if (wishlist.has(id)){
+wishlist.delete(id);
+if (selectorBtn){
+selectorBtn.classList.remove('in');
+selectorBtn.setAttribute('aria-pressed','false');
+selectorBtn.setAttribute('aria-label','Add to wishlist');
+selectorBtn.setAttribute('title','Add to wishlist');
+}
+} else {
+wishlist.add(id);
+if (selectorBtn){
+selectorBtn.classList.add('in');
+selectorBtn.setAttribute('aria-pressed','true');
+selectorBtn.setAttribute('aria-label','Remove from wishlist');
+selectorBtn.setAttribute('title','Remove from wishlist');
+// pop animation
+selectorBtn.classList.add('pop');
+setTimeout(()=>selectorBtn.classList.remove('pop'), 160);
+}
+}
+localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
+// Update any other UI dependent on wishlist state
+// e.g., refresh list labels if you rely on text elsewhere:
+// renderPage();
 };
 
 // CSV export helpers

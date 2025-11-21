@@ -1,39 +1,131 @@
-<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>HSS-IKO!</title> <style> /* Heart wishlist button */ button.wishlist-toggle { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 6px; border-radius: 8px; border: 0; background: transparent; cursor: pointer; transition: transform .12s ease; } button.wishlist-toggle svg { width: 20px; height: 20px; display: block; } button.wishlist-toggle svg .heart-shape { fill: none !important; stroke: #666 !important; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: fill .18s ease, stroke .12s ease, transform .12s ease; } button.wishlist-toggle.in svg .heart-shape { fill: #ff6b6b !important; stroke: #ff6b6b !important; } button.wishlist-toggle:hover svg .heart-shape, button.wishlist-toggle:focus svg .heart-shape { stroke: #2563eb !important; transform: scale(1.06); } button.wishlist-toggle.pop { transform: scale(1.08); transition: transform .16s ease; } button.wishlist-toggle:focus { outline: 3px solid rgba(37,99,235,0.12); outline-offset: 2px; } /* accessible visually-hidden helper */ .visually-hidden { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px,1px,1px,1px); white-space: nowrap; } /* Multi-filter */ .multi-filter { padding: 6px; background: #fff; border-radius: 6px; border: 1px solid #eee; position: relative; } .multi-filter .summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border-radius: 6px; border: 1px solid transparent; cursor: pointer; margin-bottom: 8px; font-size: 13px; color: #222; } .multi-filter .summary .chev { font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; line-height: 1; min-width: 34px; display: inline-flex; align-items: center; justify-content: center; } .multi-filter .controls { display: flex; gap: 6px; margin-bottom: 6px; transition: max-height .18s ease, opacity .18s ease; max-height: 0; overflow: hidden; opacity: 0; pointer-events: none; } .multi-filter:hover .controls, .multi-filter:focus-within .controls, .multi-filter.expanded .controls { max-height: 200px; opacity: 1; pointer-events: auto; } .multi-filter .multi-filter-list { max-height: 220px; overflow: auto; } .multi-filter.collapsed .controls, .multi-filter.collapsed .multi-filter-list { display: none; } .multi-filter label { margin: 4px 0; font-size: 13px; } /* Base layout & components */ body { font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; color: #222; background: #f7f7f8; } header { background: #111827; color: #fff; padding: 12px 16px; } .container { max-width: 1100px; margin: 18px auto; padding: 0 16px; } .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; } select, input[type="search"] { padding:8px; border:1px solid #ddd; border-radius:6px; } /* Grid and cards */ .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; } .card { background: #fff; border: 1px solid #e6e6e6; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-height: 280px; } .thumb { width: 100%; height: 200px; /* fallback for older browsers */ object-fit: cover; background: #f6f6f6; display: block; } .card-body { padding:8px; flex:1; display:flex; flex-direction:column; } .meta { font-size:13px; color:#555; margin-top:6px; margin-bottom:10px; } /* Buttons & modal */ #modal .box .details-btn { padding:6px 10px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; margin-right:8px; } #modal .box .remove-btn { padding:6px 10px; border-radius:6px; background:transparent; color:#ef4444; border:1px solid #ef4444; cursor:pointer; } #modal .box .remove-btn:hover { background:#fee2e2; } #modal .box #download-wishlist { padding:8px 12px; border-radius:6px; background:#2563eb; color:#fff; border:0; cursor:pointer; } #modal .box button { font-size:14px; } .buttons { display:flex; gap:10px; margin-top:auto; align-items:center; } button { padding:6px 8px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; } button.ghost { background:#f3f4f6; color:#111; border:1px solid #ddd; } button:disabled, button[disabled] { opacity:.55; cursor:not-allowed; background:#cfcfcf; color:#666; box-shadow:none; } #wishlist-note { font-size:13px; color:#666; } #modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:18px; z-index:40; } #modal .box { background:#fff; padding:18px; border-radius:8px; max-width:920px; width:100%; max-height:85vh; overflow:auto; } .row { display:flex; gap:8px; flex-wrap:wrap; } .small { font-size:13px; color:#666; } .pager { display:flex; gap:8px; align-items:center; justify-content:center; margin:14px 0; } .wishlist-btn { background:#ff6b6b; } .topbar { display:flex; gap:8px; align-items:center; } .badge { background:#efefef; padding:6px 8px; border-radius:6px; font-size:13px; color:#333; } /* Footer */ .site-footer { background:#111827; color:#fff; padding:12px 16px; margin-top:18px; } .site-footer a { color:inherit; text-decoration:underline; } /* MOBILE OVERRIDES: two-up layout on phones */ @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:10px; } .card { min-height: unset; } .thumb { height:auto; aspect-ratio:4/3; object-fit:cover; } .container { padding-left:12px; padding-right:12px; } .card-body { padding:8px; } .meta { font-size:13px; } .buttons button { padding:10px 12px; font-size:15px; border-radius:8px; } } /* very small phones: single column */ @media (max-width: 340px) { .grid { grid-template-columns: 1fr; } } /* Additional mobile niceties */ @media (max-width: 600px) { .controls { gap:6px; } .multi-filter { min-width:unset; max-width:100%; padding:6px; margin-bottom:8px; } .multi-filter.collapsed .controls, .multi-filter.collapsed .multi-filter-list { display:none; } .multi-filter .summary { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px; background:#fff; border-radius:6px; border:1px solid #eee; cursor:pointer; margin-bottom:6px; } .multi-filter .summary .label { font-weight:600; font-size:14px; color:#222; } .multi-filter .summary .chev { font-size:14px; background:transparent; border:0; cursor:pointer; color:#2563eb; } .multi-filter .multi-filter-list { max-height:180px; overflow:auto; } .card { min-height:220px; } .thumb { height:140px; } .buttons button { padding:12px 14px; font-size:16px; border-radius:8px; } #modal .box { padding:16px; width:100%; max-width:720px; margin:0 12px; } #modal .box img { max-width:100%; height:auto; } .meta { font-size:14px; } } /* Ensure details-btn matches card button sizing (desktop + mobile) */ .card .details-btn { padding: 8px 10px; border-radius: 6px; border: 0; background: #2563eb; color: #fff; cursor: pointer; } @media (max-width: 600px) { .card .details-btn { padding: 12px 14px; font-size: 16px; border-radius: 8px; background: #f3f4f6; color: #111; border: 1px solid #ddd; } .card .wishlist-toggle { padding: 12px 14px; font-size: 16px; border-radius: 8px; background: #f3f4f6; color: #111; border: 1px solid #ddd; display: inline-flex; align-items: center; justify-content: center; height: auto; min-width: 0; } .card .wishlist-toggle svg { width: 20px; height: 20px; display: block; } }/* Show large heart icon but hide gray rectangle while preserving large hit area /
+<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>HSS-IKO!</title> <style> /* Basics & buttons */ body { font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin:0; padding:0; color:#222; background:#f7f7f8; } header { background:#111827; color:#fff; padding:12px 16px; } .container { max-width:1100px; margin:18px auto; padding:0 16px; } .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; } select,input[type="search"]{ padding:8px; border:1px solid #ddd; border-radius:6px; }
+/* Card grid */
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:12px; }
+.card {
+background:#fff;
+border:1px solid #e6e6e6;
+border-radius:8px;
+overflow:hidden;
+display:flex;
+flex-direction:column;
+min-height:280px;
+}
+
+/* Thumbnail /
+.thumb {
+width:100%;
+height:200px; / desktop fallback */
+object-fit:cover;
+background:#f6f6f6;
+display:block;
+}
+
+/* Card body */
+.card-body { padding:8px; flex:1; display:flex; flex-direction:column; }
+.meta { font-size:13px; color:#555; margin-top:6px; margin-bottom:10px; }
+
+/* Buttons inside card */
+.buttons { display:flex; gap:10px; margin-top:auto; align-items:center; }
+button { padding:6px 8px; border-radius:6px; border:0; background:#2563eb; color:#fff; cursor:pointer; }
+button.ghost { background:#f3f4f6; color:#111; border:1px solid #ddd; }
+button:disabled, button[disabled] { opacity:.55; cursor:not-allowed; background:#cfcfcf; color:#666; box-shadow:none; }
+
+/* details button class: support both names just in case /
+.card .detail-btn,
+.card .details-btn {
+padding:8px 10px;
+border-radius:6px;
+border:0;
+background:#2563eb;
+color:#fff;
+cursor:pointer;
+}
+@media (max-width:600px) {
+.card .detail-btn,
+.card .details-btn {
+padding:12px 14px;
+font-size:16px;
+border-radius:8px;
+background:#f3f4f6; / ghost look on mobile */
+color:#111;
+border:1px solid #ddd;
+}
+}
+
+/* Wishlist heart button: keep large tappable area but visually icon-only /
 .card .wishlist-toggle {
-background: transparent;    / remove visible rectangle /
-border: 0;                  / remove outline border /
-padding: 10px 12px;         / keep large tappable area /
-display: inline-flex;
-align-items: center;
-justify-content: center;
-border-radius: 8px;         / keep focus ring rounded */
+display:inline-flex;
+align-items:center;
+justify-content:center;
+padding:10px;               / large hit area /
+border-radius:8px;
+background: transparent;    / visually no rectangle */
+border: 0;
+color: inherit;
+cursor: pointer;
 }
 
-/* Make the svg icon bigger so the heart fills the available area */
+/* SVG sizing and heart path */
 .card .wishlist-toggle svg {
-width: 22px;
-height: 22px;
-display: block;
+width:22px;
+height:22px;
+display:block;
 }
 
-/* Allow the stroke to scale and make it thicker so it visually matches the size /
+/* Heart path: allow scaling and thicker stroke for larger icon /
 .card .wishlist-toggle svg .heart-shape {
-vector-effect: none !important;   / override non-scaling rule so shape scales /
-stroke-width: 1.8 !important;     / adjust to taste (1.6 → 1.8 or 2.2) */
+vector-effect: none !important; / let stroke scale with icon */
+stroke-width: 1.9 !important;
+stroke: #666;
 fill: none;
 transition: fill .18s ease, stroke .12s ease, transform .12s ease;
 }
 
-/* Filled state keeps its color */
+/* Hover / focus states */
+.card .wishlist-toggle:hover svg .heart-shape,
+.card .wishlist-toggle:focus svg .heart-shape {
+stroke: #2563eb !important;
+transform: scale(1.05);
+}
+
+/* Filled / in-wishlist state */
 .card .wishlist-toggle.in svg .heart-shape {
 fill: #ff6b6b !important;
 stroke: #ff6b6b !important;
 }
 
-/* Keep an accessible focus visible state */
-.card .wishlist-toggle:focus {
-outline: 3px solid rgba(37,99,235,0.12);
-outline-offset: 2px;
-} </style>
+/* Keep focus outline for accessibility */
+.card .wishlist-toggle:focus { outline:3px solid rgba(37,99,235,0.12); outline-offset:2px; }
 
-</head> <body> <header> <div class="container"> <div style="display:flex;align-items:center;justify-content:space-between"> <h1 style="margin:0;font-size:20px">和山山 IKO!</h1> <div class="topbar"> <button id="open-wishlist" class="ghost">心愿单</button> <button id="export-wishlist" class="ghost">导出心愿单</button> </div> </div> </div> </header> <main class="container"> <div class="controls"> <input id="search" type="search" placeholder="输入关键词搜索" style="flex:1" /> <!-- multi-select checkbox containers (works, characters, images) --> <div id="filter-type-container" class="multi-filter" aria-label="类型"></div> <div id="filter-work-container" class="multi-filter" aria-label="作品"></div> <div id="filter-character-container" class="multi-filter" aria-label="人物"></div> <div id="filter-image-container" class="multi-filter" aria-label="柄图"></div> <select id="sort"> <option value="title">排序：名称 A-Z</option> <option value="type">排序：类型 A-Z</option> <option value="release_date">排序：发行日期 最新-古早</option> </select> </div> <div id="list" class="grid"></div> <div class="pager"> <button id="prev" onclick="goPage(-1)">Prev</button> <div id="page-info" class="small"></div> <button id="next" onclick="goPage(1)">Next</button> </div> </main> <footer class="site-footer"> <div class="container" style="display:flex;align-items:center;justify-content:center"> <div style="font-size:16px;margin:6px 0"> <a href="mailto:laios9@yahoo.com" id="contact-email" style="color:inherit;text-decoration:underline">laios9@yahoo.com</a> </div> </div> </footer> <div id="modal" role="dialog" aria-hidden="true"> <div class="box"> <button id="close-modal" class="ghost" style="float:right">Close</button> <div id="modal-content"></div> </div> </div> <!-- PapaParse for client-side CSV parsing --> <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script> <script src="app.js"></script> <!-- Small helper: ensure dynamically-created wishlist buttons get the details-btn class so they inherit button sizing --> <script> (function () { function addDetailsClass(el) { try { if (!el) return; if (el.classList && el.classList.contains('wishlist-toggle') && !el.classList.contains('details-btn')) { el.classList.add('details-btn'); } } catch (e) { /* ignore */ } } function scanAndAdd() { document.querySelectorAll('.wishlist-toggle').forEach(addDetailsClass); } // Run on DOM ready and window load (app.js may create nodes after load) document.addEventListener('DOMContentLoaded', scanAndAdd); window.addEventListener('load', function () { scanAndAdd(); // small delay in case app.js populates asynchronously setTimeout(scanAndAdd, 150); }); // Observe mutations so dynamically-added cards/buttons receive the class var obs = new MutationObserver(function (mutations) { for (var m of mutations) { for (var n of m.addedNodes) { if (n.nodeType !== 1) continue; if (n.matches && n.matches('.wishlist-toggle')) addDetailsClass(n); if (n.querySelectorAll) n.querySelectorAll('.wishlist-toggle').forEach(addDetailsClass); } } }); obs.observe(document.body, { childList: true, subtree: true }); })(); </script> </body> </html>
+/* Responsive - two-up grid on phones, thumbnails consistent /
+@media (max-width:600px) {
+.grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+.card { min-height:unset; }
+.thumb { height:auto; aspect-ratio:4/3; object-fit:cover; }
+.container { padding-left:12px; padding-right:12px; }
+.card-body { padding:8px; }
+.meta { font-size:13px; }
+.buttons button { padding:10px 12px; font-size:15px; border-radius:8px; }
+/ Slightly larger heart icon on very small screens */
+.card .wishlist-toggle { padding:12px; }
+.card .wishlist-toggle svg { width:24px; height:24px; }
+.card .wishlist-toggle svg .heart-shape { stroke-width:2.0 !important; transform: scale(1.05); }
+}
+
+/* Very narrow phones - single column */
+@media (max-width:340px) {
+.grid { grid-template-columns: 1fr; }
+}
+
+/* Modal, footer, misc */
+#modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; padding:18px; z-index:40; }
+#modal .box { background:#fff; padding:18px; border-radius:8px; max-width:920px; width:100%; max-height:85vh; overflow:auto; }
+.row { display:flex; gap:8px; flex-wrap:wrap; }
+.small { font-size:13px; color:#666; }
+.pager { display:flex; gap:8px; align-items:center; justify-content:center; margin:14px 0; }
+.topbar { display:flex; gap:8px; align-items:center; }
+.site-footer { background:#111827; color:#fff; padding:12px 16px; margin-top:18px; }
+.site-footer a { color:inherit; text-decoration:underline; }
+</style>
+
+</head> <body> <header> <div class="container"> <div style="display:flex;align-items:center;justify-content:space-between"> <h1 style="margin:0;font-size:20px">和山山 IKO!</h1> <div class="topbar"> <button id="open-wishlist" class="ghost">心愿单</button> <button id="export-wishlist" class="ghost">导出心愿单</button> </div> </div> </div> </header> <main class="container"> <div class="controls"> <input id="search" type="search" placeholder="输入关键词搜索" style="flex:1" /> <div id="filter-type-container" class="multi-filter" aria-label="类型"></div> <div id="filter-work-container" class="multi-filter" aria-label="作品"></div> <div id="filter-character-container" class="multi-filter" aria-label="人物"></div> <div id="filter-image-container" class="multi-filter" aria-label="柄图"></div> <select id="sort"> <option value="title">排序：名称 A-Z</option> <option value="type">排序：类型 A-Z</option> <option value="release_date">排序：发行日期 最新-古早</option> </select> </div> <div id="list" class="grid"></div> <div class="pager"> <button id="prev" onclick="goPage(-1)">Prev</button> <div id="page-info" class="small"></div> <button id="next" onclick="goPage(1)">Next</button> </div> </main> <footer class="site-footer"> <div class="container" style="display:flex;align-items:center;justify-content:center"> <div style="font-size:16px;margin:6px 0"> <a href="mailto:laios9@yahoo.com" id="contact-email" style="color:inherit;text-decoration:underline">laios9@yahoo.com</a> </div> </div> </footer> <div id="modal" role="dialog" aria-hidden="true"> <div class="box"> <button id="close-modal" class="ghost" style="float:right">Close</button> <div id="modal-content"></div> </div> </div> <!-- PapaParse for client-side CSV parsing --> <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script> <script src="app.js"></script> </body> </html>

@@ -126,6 +126,69 @@ stroke: #ff6b6b !important;
 .topbar { display:flex; gap:8px; align-items:center; }
 .site-footer { background:#111827; color:#fff; padding:12px 16px; margin-top:18px; }
 .site-footer a { color:inherit; text-decoration:underline; }
+  /* EMERGENCY FIX: constrain thumbnails and make wishlist icon visually icon-only */
+.grid {
+display: grid !important;
+grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+gap: 12px !important;
+}
+
+/* Desktop / tablet thumbnail constraint /
+.thumb {
+display: block !important;
+width: 100% !important;
+height: 200px !important;       / fixed preview height for grid */
+max-height: 200px !important;
+object-fit: cover !important;
+}
+
+/* Mobile: two-up grid and consistent aspect */
+@media (max-width: 600px) {
+.grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.thumb {
+height: auto !important;
+max-height: none !important;
+aspect-ratio: 4 / 3 !important;
+object-fit: cover !important;
+}
+}
+
+/* Very narrow phones: single column */
+@media (max-width: 340px) {
+.grid { grid-template-columns: 1fr !important; }
+}
+
+/* Ensure wishlist button has no visible rectangle and keep large hit area */
+.card .wishlist-toggle {
+background: transparent !important;
+border: 0 !important;
+padding: 10px !important;
+display: inline-flex !important;
+align-items: center !important;
+justify-content: center !important;
+border-radius: 8px !important;
+color: inherit !important;
+}
+
+/* Larger icon and visible stroke that scales /
+.card .wishlist-toggle svg {
+width: 24px !important;
+height: 24px !important;
+display: block !important;
+}
+.card .wishlist-toggle svg .heart-shape {
+vector-effect: none !important;   / allow stroke to scale */
+stroke-width: 2 !important;
+stroke: #666 !important;
+fill: none !important;
+transform: none !important;
+}
+
+/* Filled state */
+.card .wishlist-toggle.in svg .heart-shape {
+fill: #ff6b6b !important;
+stroke: #ff6b6b !important;
+}
 </style>
 
 </head> <body> <header> <div class="container"> <div style="display:flex;align-items:center;justify-content:space-between"> <h1 style="margin:0;font-size:20px">和山山 IKO!</h1> <div class="topbar"> <button id="open-wishlist" class="ghost">心愿单</button> <button id="export-wishlist" class="ghost">导出心愿单</button> </div> </div> </div> </header> <main class="container"> <div class="controls"> <input id="search" type="search" placeholder="输入关键词搜索" style="flex:1" /> <div id="filter-type-container" class="multi-filter" aria-label="类型"></div> <div id="filter-work-container" class="multi-filter" aria-label="作品"></div> <div id="filter-character-container" class="multi-filter" aria-label="人物"></div> <div id="filter-image-container" class="multi-filter" aria-label="柄图"></div> <select id="sort"> <option value="title">排序：名称 A-Z</option> <option value="type">排序：类型 A-Z</option> <option value="release_date">排序：发行日期 最新-古早</option> </select> </div> <div id="list" class="grid"></div> <div class="pager"> <button id="prev" onclick="goPage(-1)">Prev</button> <div id="page-info" class="small"></div> <button id="next" onclick="goPage(1)">Next</button> </div> </main> <footer class="site-footer"> <div class="container" style="display:flex;align-items:center;justify-content:center"> <div style="font-size:16px;margin:6px 0"> <a href="mailto:laios9@yahoo.com" id="contact-email" style="color:inherit;text-decoration:underline">laios9@yahoo.com</a> </div> </div> </footer> <div id="modal" role="dialog" aria-hidden="true"> <div class="box"> <button id="close-modal" class="ghost" style="float:right">Close</button> <div id="modal-content"></div> </div> </div> <!-- PapaParse for client-side CSV parsing --> <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script> <script src="app.js"></script> </body> </html>

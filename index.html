@@ -1,10 +1,4 @@
-<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /> .site-footer {
-background:#111827;
-color:#fff;
-padding:12px 16px;
-margin-top:18px;
-}
-.site-footer a { color: inherit; text-decoration: underline; }<title>HSS-IKO!</title><style>/* Heart wishlist button /
+<!doctype html> <html lang="zh-CN"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width,initial-scale=1" /><title>HSS-IKO!</title><style>/* Heart wishlist button /
 .wishlist-toggle {
 display:inline-flex;
 align-items:center;
@@ -215,6 +209,14 @@ button.wishlist-toggle.pop { transform: scale(1.08); transition: transform .16s 
 
 /* ensure the button is keyboard-focus-visible */
 button.wishlist-toggle:focus { outline: 3px solid rgba(37,99,235,0.12); outline-offset: 2px; }
+ /* Footer matching header style */
+.site-footer {
+  background:#111827;
+  color:#fff;
+  padding:12px 16px;
+  margin-top:18px;
+}
+.site-footer a { color: inherit; text-decoration: underline; }
 
 </style> </head> <body> <header> <div class="container"> <div style="display:flex;align-items:center;justify-content:space-between"> <h1 style="margin:0;font-size:20px">和山山 IKO!</h1> <div class="topbar"> <button id="open-wishlist" class="ghost">心愿单</button> <button id="export-wishlist" class="ghost">导出心愿单</button></div> </div> </div> </header> <main class="container"> <div class="controls"> <input id="search" type="search" placeholder="输入关键词搜索" style="flex:1" /><!-- multi-select checkbox containers (works, characters, images) --> <div id="filter-type-container" class="multi-filter" aria-label="类型"></div> <div id="filter-work-container" class="multi-filter" aria-label="作品"></div> <div id="filter-character-container" class="multi-filter" aria-label="人物"></div> <div id="filter-image-container" class="multi-filter" aria-label="柄图"></div>
 <select id="sort"><option value="title">排序：名称 A-Z</option><option value="type">排序：类型 A-Z</option><option value="release_date">排序：发行日期 最新-古早</option></select>

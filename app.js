@@ -72,26 +72,68 @@ window.populateFilters = function(){
     types.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; selType.appendChild(o); });
   }
 
-  function renderCheckboxes(containerId, tokens){
-    const c = q(containerId); if(!c) return; c.innerHTML = '';
-    const tools = document.createElement('div'); tools.className = 'controls';
-    const allBtn = document.createElement('button'); allBtn.type='button'; allBtn.textContent='Select all';
-    const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear';
-    allBtn.onclick = ()=>{ c.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true); applyFilters(); };
-    clearBtn.onclick = ()=>{ c.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false); applyFilters(); };
-    tools.appendChild(allBtn); tools.appendChild(clearBtn); c.appendChild(tools);
+function renderCheckboxes(containerId, tokens){
+const c = q(containerId);
+if(!c) return;
+c.innerHTML = '';
 
-    const list = document.createElement('div'); list.style.maxHeight='220px'; list.style.overflow='auto';
-    tokens.forEach(tok=>{
-      const id = containerId + '_opt_' + tok.replace(/\s+/g,'_').replace(/[^\w-]/g,'');
-      const labelEl = document.createElement('label'); labelEl.style.display = 'block'; labelEl.style.fontSize = '13px'; labelEl.style.cursor = 'pointer';
-      labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
-      list.appendChild(labelEl);
-      labelEl.querySelector('input').addEventListener('change', ()=>applyFilters());
-    });
-    c.appendChild(list);
-  }
+// tools
+const tools = document.createElement('div');
+tools.className = 'controls';
+const allBtn = document.createElement('button');
+allBtn.type = 'button';
+allBtn.textContent = 'Select all';
+const clearBtn = document.createElement('button');
+clearBtn.type = 'button';
+clearBtn.textContent = 'Clear';
+// start disabled until any checkbox is checked
+clearBtn.disabled = true;
 
+tools.appendChild(allBtn);
+tools.appendChild(clearBtn);
+c.appendChild(tools);
+
+const list = document.createElement('div');
+list.style.maxHeight='220px';
+list.style.overflow='auto';
+
+// helper to update clear button state
+function updateClearState(){
+const anyChecked = Array.from(list.querySelectorAll('input[type=checkbox]')).some(ch => ch.checked);
+clearBtn.disabled = !anyChecked;
+}
+
+tokens.forEach(tok=>{
+const id = containerId + 'opt' + tok.replace(/\s+/g,'_').replace(/[^\w-]/g,'');
+const labelEl = document.createElement('label');
+labelEl.style.display = 'block';
+labelEl.style.fontSize = '13px';
+labelEl.style.cursor = 'pointer';
+labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
+list.appendChild(labelEl);
+const ch = labelEl.querySelector('input');
+ch.addEventListener('change', ()=>{ updateClearState(); applyFilters(); });
+});
+
+c.appendChild(list);
+
+// Select all behavior: check all boxes and enable Clear
+allBtn.onclick = ()=>{
+list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true);
+updateClearState();
+applyFilters();
+};
+
+// Clear behavior: uncheck all and disable Clear
+clearBtn.onclick = ()=>{
+list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false);
+updateClearState();
+applyFilters();
+};
+
+// ensure initial state correct
+updateClearState();
+}
   renderCheckboxes('filter-type-container', types);
   renderCheckboxes('filter-work-container', works);
   renderCheckboxes('filter-character-container', chars);

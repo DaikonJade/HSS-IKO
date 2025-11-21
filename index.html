@@ -159,7 +159,41 @@ display: flex;
 gap: 10px;        /* slightly larger horizontal gap between buttons */
 margin-top: auto;
 align-items: center;
-} /* primary button */ button{padding:6px 8px;border-radius:6px;border:0;background:#2563eb;color:#fff;cursor:pointer} /* ghost style */ button.ghost{background:#f3f4f6;color:#111;border:1px solid #ddd} /* disabled appearance for buttons */ button:disabled, button[disabled] { opacity: 0.55; cursor: not-allowed; background: #cfcfcf; color: #666; box-shadow: none; } /* modal and misc */ #wishlist-note { font-size:13px; color:#666; } #modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:40} #modal .box{background:#fff;padding:18px;border-radius:8px;max-width:920px;width:100%;max-height:85vh;overflow:auto} .row{display:flex;gap:8px;flex-wrap:wrap} .small{font-size:13px;color:#666} .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin:14px 0} .wishlist-btn{background:#ff6b6b} .topbar{display:flex;gap:8px;align-items:center} .badge{background:#efefef;padding:6px 8px;border-radius:6px;font-size:13px;color:#333} /* Mobile-specific layout tweaks and filter collapsed styling */ @media (max-width: 600px) { /* Make filter panels full-width and compact */ .controls { gap: 6px; } .multi-filter { min-width: unset; max-width: 100%; padding: 6px; margin-bottom: 8px; } /* Collapsed state: hide tools and list (JS will toggle .collapsed) */ .multi-filter.collapsed .controls, .multi-filter.collapsed .multi-filter-list { display: none; } /* Summary header (visible on mobile) */ .multi-filter .summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px; background: #fff; border-radius: 6px; border: 1px solid #eee; cursor: pointer; margin-bottom: 6px; } .multi-filter .summary .label { font-weight: 600; font-size: 14px; color: #222; } .multi-filter .summary .chev { font-size: 14px; background: transparent; border: 0; cursor: pointer; color: #2563eb; } /* ensure the check list inside filter can scroll if large */ .multi-filter .multi-filter-list { max-height: 180px; overflow: auto; } /* Smaller card previews */ .card { min-height: 220px; } .thumb { height: 140px; } /* Bigger touch targets for buttons */ .buttons button { padding: 12px 14px; font-size: 16px; border-radius: 8px; } /* Increase modal contents readability on small screens */ #modal .box { padding: 16px; width: 100%; max-width: 720px; margin: 0 12px; } #modal .box img { max-width: 100%; height: auto; } /* Make meta text a bit larger for readability */ .meta { font-size: 14px; } } /* small-screen fallback for thumb if not captured above */ @media (max-width: 600px) { .thumb { height: 140px; } } /* Heart wishlist button — stronger / last rules so generic button styles don't override */
+} /* primary button */ button{padding:6px 8px;border-radius:6px;border:0;background:#2563eb;color:#fff;cursor:pointer} /* ghost style */ button.ghost{background:#f3f4f6;color:#111;border:1px solid #ddd} /* disabled appearance for buttons */ button:disabled, button[disabled] { opacity: 0.55; cursor: not-allowed; background: #cfcfcf; color: #666; box-shadow: none; } /* modal and misc */ #wishlist-note { font-size:13px; color:#666; } #modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:18px;z-index:40} #modal .box{background:#fff;padding:18px;border-radius:8px;max-width:920px;width:100%;max-height:85vh;overflow:auto} .row{display:flex;gap:8px;flex-wrap:wrap} .small{font-size:13px;color:#666} .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin:14px 0} .wishlist-btn{background:#ff6b6b} .topbar{display:flex;gap:8px;align-items:center} .badge{background:#efefef;padding:6px 8px;border-radius:6px;font-size:13px;color:#333} /* Mobile-specific layout tweaks and filter collapsed styling */ @media (max-width: 600px)/* two-up card layout on phones; single column on very tiny screens */
+@media (max-width: 600px) {
+.grid {
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 10px;
+}
+
+/* relax fixed min-height so cards size to content */
+.card {
+min-height: unset;
+}
+
+/* use aspect-ratio instead of fixed height so images remain large and consistent /
+.thumb {
+width: 100%;
+height: auto;
+aspect-ratio: 4 / 3;   / choose 1/1, 4/3 or 16/9 depending on your images /
+object-fit: cover;     / ensure images crop nicely */
+display: block;
+background: #f6f6f6;
+}
+
+/* slightly smaller gaps/padding on mobile to make two-up comfortable */
+.container { padding-left: 12px; padding-right: 12px; }
+.card-body { padding: 8px; }
+.meta { font-size: 13px; }
+
+/* preserve tappable target sizes */
+.buttons button { padding: 10px 12px; font-size: 15px; border-radius: 8px; }
+}
+
+/* very small phones (e.g. very narrow devices) — revert to one column to avoid cramped layout */
+@media (max-width: 340px) {
+.grid { grid-template-columns: 1fr; }
+} { /* Make filter panels full-width and compact */ .controls { gap: 6px; } .multi-filter { min-width: unset; max-width: 100%; padding: 6px; margin-bottom: 8px; } /* Collapsed state: hide tools and list (JS will toggle .collapsed) */ .multi-filter.collapsed .controls, .multi-filter.collapsed .multi-filter-list { display: none; } /* Summary header (visible on mobile) */ .multi-filter .summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px; background: #fff; border-radius: 6px; border: 1px solid #eee; cursor: pointer; margin-bottom: 6px; } .multi-filter .summary .label { font-weight: 600; font-size: 14px; color: #222; } .multi-filter .summary .chev { font-size: 14px; background: transparent; border: 0; cursor: pointer; color: #2563eb; } /* ensure the check list inside filter can scroll if large */ .multi-filter .multi-filter-list { max-height: 180px; overflow: auto; } /* Smaller card previews */ .card { min-height: 220px; } .thumb { height: 140px; } /* Bigger touch targets for buttons */ .buttons button { padding: 12px 14px; font-size: 16px; border-radius: 8px; } /* Increase modal contents readability on small screens */ #modal .box { padding: 16px; width: 100%; max-width: 720px; margin: 0 12px; } #modal .box img { max-width: 100%; height: auto; } /* Make meta text a bit larger for readability */ .meta { font-size: 14px; } } /* small-screen fallback for thumb if not captured above */ @media (max-width: 600px) { .thumb { height: 140px; } } /* Heart wishlist button — stronger / last rules so generic button styles don't override */
 button.wishlist-toggle {
 background: transparent !important;
 border: 0 !important;

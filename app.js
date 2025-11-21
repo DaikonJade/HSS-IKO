@@ -419,6 +419,11 @@ function renderWishlistModal(){
 const modal = q('modal');
 const content = q('modal-content');
 if (!modal || !content) return;
+
+// localize modal close button
+const closeBtn = q('close-modal');
+if (closeBtn) closeBtn.textContent = '关闭';
+
 // clear previous
 content.innerHTML = '';
 
@@ -426,21 +431,25 @@ const container = document.createElement('div');
 
 // Title
 const h = document.createElement('h3');
-h.textContent =`Wishlist (${wishlist.size})`;
+h.textContent =·心愿单 (${wishlist.size})·;
 container.appendChild(h);
 
 // List items
 if (wishlist.size === 0) {
 const empty = document.createElement('div');
-empty.textContent = 'No items in your Wishlist.';
+empty.textContent = '心愿单中空空如也~';
+empty.style.padding = '8px 0';
 container.appendChild(empty);
 } else {
 Array.from(wishlist).forEach(id => {
-const it = items.find(x => x.id === id) || { id };const row = document.createElement('div');
+const it = items.find(x => x.id === id) || { id };
+
+const row = document.createElement('div');
   row.style.display = 'flex';
   row.style.alignItems = 'center';
+  row.style.justifyContent = 'space-between';
   row.style.gap = '8px';
-  row.style.padding = '6px 0';
+  row.style.padding = '8px 0';
   row.style.borderBottom = '1px solid #eee';
 
   const left = document.createElement('div');
@@ -448,21 +457,26 @@ const it = items.find(x => x.id === id) || { id };const row = document.createEle
   left.textContent = it.title || it.jp_title || it.id;
 
   const right = document.createElement('div');
+  right.style.display = 'flex';
+  right.style.alignItems = 'center';
 
   const detailsBtn = document.createElement('button');
   detailsBtn.type = 'button';
+  detailsBtn.className = 'details-btn';
   detailsBtn.textContent = '详情';
+  detailsBtn.style.marginRight = '10px'; // spacing between 详情 and 移出
   detailsBtn.addEventListener('click', () => {
-    // keep modal open or close first depending on UX; here we open details and leave modal open
+    // keep modal open; if you prefer closing first, call window.closeModal()
     window.openDetail && window.openDetail(id);
   });
 
   const removeBtn = document.createElement('button');
   removeBtn.type = 'button';
-  removeBtn.textContent = 'Remove';
+  removeBtn.className = 'remove-btn';
+  removeBtn.textContent = '移出';
   removeBtn.addEventListener('click', () => {
     window.removeFromWishlist && window.removeFromWishlist(id);
-    // refresh the modal contents
+    // refresh modal contents
     renderWishlistModal();
   });
 
@@ -474,13 +488,13 @@ const it = items.find(x => x.id === id) || { id };const row = document.createEle
   container.appendChild(row);
 });}
 
-// Export button row
+// Export button row (Chinese)
 const exportRow = document.createElement('div');
 exportRow.style.marginTop = '12px';
 const exportBtn = document.createElement('button');
 exportBtn.type = 'button';
 exportBtn.id = 'download-wishlist';
-exportBtn.textContent = 'Export Wishlist';
+exportBtn.textContent = '导出心愿单';
 exportBtn.addEventListener('click', () => exportWishlistCSV());
 exportRow.appendChild(exportBtn);
 container.appendChild(exportRow);

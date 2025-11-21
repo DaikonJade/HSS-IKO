@@ -217,7 +217,7 @@ window.renderPage = function(){
         <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong>
         <div class="meta">${window.escapeHtml ? window.escapeHtml(typeText) : typeText}</div>
         <div class="buttons">
-          <button class="detail-btn">Details</button>
+          <button class="detail-btn" aria-label="查看详情">详情</button>
           <button class="${wishlist.has(it.id)?'wishlist-btn':''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}">${wishlist.has(it.id)?'In my wishlist':'Add to my wishlist'}</button>
         </div>
       </div>`;
@@ -410,7 +410,7 @@ function renderWishlistModal(){
   const rows = listIds.map(id => {
     const it = items.find(x=>x.id===id) || { id };
     const title = it.title || it.jp_title || it.id;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee"><div style="flex:1">${window.escapeHtml(title)}</div><div><button onclick="window.openDetail('${window.escapeAttr(id)}')">Details</button> <button onclick="window.removeFromWishlist('${window.escapeAttr(id)}')">Remove</button></div></div>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee"><div style="flex:1">${window.escapeHtml(title)}</div><div>onclick="window.openDetail('${window.escapeAttr ? window.escapeAttr(id) : id}')">详情</button> <button onclick="window.removeFromWishlist('${window.escapeAttr(id)}')">Remove</button></div></div>`;
   }).join('') || '<div>No items in your Wishlist.</div>';
   const html = `<div><h3>Wishlist (${listIds.length})</h3>${rows}<div style="margin-top:12px"><button id="download-wishlist">Export Wishlist</button></div></div>`;
   window.openModal && window.openModal(html);

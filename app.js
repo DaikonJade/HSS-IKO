@@ -431,7 +431,7 @@ const container = document.createElement('div');
 
 // Title
 const h = document.createElement('h3');
-h.textContent =·心愿单 (${wishlist.size})·;
+h.textContent =`心愿单 (${wishlist.size})`;
 container.appendChild(h);
 
 // List items

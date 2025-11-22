@@ -518,3 +518,50 @@ modal.setAttribute('aria-hidden', 'false');
 
 const openWishlistBtn = q('open-wishlist');
 if (openWishlistBtn) openWishlistBtn.addEventListener('click', renderWishlistModal);
+// =======================
+// Image Zoom Feature
+// =======================
+window.enableImageZoom = function () {
+  const modal = q('modal');
+  const content = q('modal-content');
+  if (!modal || !content) return;
+
+  // Add zoom container only once
+  if (!q('zoom-overlay')) {
+    const zoom = document.createElement('div');
+    zoom.id = 'zoom-overlay';
+    zoom.style.position = 'fixed';
+    zoom.style.top = '0';
+    zoom.style.left = '0';
+    zoom.style.width = '100vw';
+    zoom.style.height = '100vh';
+    zoom.style.background = 'rgba(0,0,0,0.8)';
+    zoom.style.display = 'none';
+    zoom.style.alignItems = 'center';
+    zoom.style.justifyContent = 'center';
+    zoom.style.zIndex = '9999';
+    zoom.innerHTML = `<img id="zoom-img" style="max-width:95%;max-height:95%;border-radius:8px;">`;
+    document.body.appendChild(zoom);
+
+    zoom.addEventListener('click', () => zoom.style.display = 'none');
+  }
+
+  // Attach click handler to modal’s image
+  const img = content.querySelector('img');
+  if (img) {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      const zoom = q('zoom-overlay');
+      const zoomImg = q('zoom-img');
+      zoomImg.src = img.src;
+      zoom.style.display = 'flex';
+    });
+  }
+};
+
+// Auto-run zoom activation whenever the modal opens
+const originalOpenModal = window.openModal;
+window.openModal = function (html) {
+  originalOpenModal(html);
+  window.enableImageZoom();
+};

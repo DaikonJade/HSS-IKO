@@ -48,20 +48,17 @@ window.escapeHtml = function(s){
   return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 };
 window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'&quot;') : ''; };
-window.imgUrl = function(it){ if (!it || !it.image_filename) return PLACEHOLDER; return IMAGES_FOLDER + it.image_filename; };
-
-// Load CSV and initialize UI
-fetch(DATA_FILE).then(r => r.text()).then(txt => {
-  const parsedRows = (typeof Papa !== 'undefined') ? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data : [];
-  const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
-  items = normalized; window.items = items; filtered = items.slice();
-  if (typeof window.populateFilters === 'function') window.populateFilters();
-  if (typeof window.applyFilters === 'function') window.applyFilters();
-}).catch(err => {
-  console.error('Failed to load data.csv', err);
-  const listEl = q('list');
-  if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
-});
+window.imgUrl = function(it){
+if (!it || !it.image_filename) return PLACEHOLDER;
+// normalize filename: remove leading $ signs, leading slashes, and any leading "images/" token
+let fname = String(it.image_filename).trim();
+fname = fname.replace(/^$+/, '');            // remove leading $ chars (e.g. "$images/...")
+fname = fname.replace(/^/+/, '');            // remove leading slashes
+fname = fname.replace(/^images//i, '');      // remove an embedded images/ prefix if present
+// ensure IMAGES_FOLDER ends with a single slash
+const folder = IMAGES_FOLDER.replace(/^/+|/+$/g, '') + '/';
+return folder + fname;
+};
 
 window.populateFilters = function(){
   const types = unique((items||[]).flatMap(i=>i.type || []));

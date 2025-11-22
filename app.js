@@ -293,7 +293,7 @@ window.openDetail = async function(id){
 
     const html = `
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <img class="detail-img" src="$${window.escapeAttr(img)}" data-src="$${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px;cursor:zoom-in" alt="">
+        <img src="${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px" alt="">
         <div style="flex:1;min-width:220px">
           <h2 style="margin:0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>
           ${detailsHtml}
@@ -522,103 +522,46 @@ if (openWishlistBtn) openWishlistBtn.addEventListener('click', renderWishlistMod
 // Image Zoom Feature
 // =======================
 window.enableImageZoom = function () {
-const modal = q('modal');
-const content = q('modal-content');
-if (!modal || !content) return;
+  const modal = q('modal');
+  const content = q('modal-content');
+  if (!modal || !content) return;
 
-// Create zoom overlay once
-if (!q('zoom-overlay')) {
-const zoom = document.createElement('div');
-zoom.id = 'zoom-overlay';
-zoom.style.position = 'fixed';
-zoom.style.inset = '0';
-zoom.style.background = 'rgba(0,0,0,0.85)';
-zoom.style.display = 'none';
-zoom.style.alignItems = 'center';
-zoom.style.justifyContent = 'center';
-zoom.style.zIndex = '2147483647'; // Ensure it's on top
-zoom.style.padding = '20px';
-zoom.style.boxSizing = 'border-box';// spinner / message container
-const meta = document.createElement('div');
-meta.id = 'zoom-meta';
-meta.style.position = 'absolute';
-meta.style.top = '12px';
-meta.style.left = '12px';
-meta.style.color = '#fff';
-meta.style.fontSize = '13px';
-meta.style.pointerEvents = 'none';
-zoom.appendChild(meta);
-
-const img = document.createElement('img');
-img.id = 'zoom-img';
-img.style.maxWidth = '95%';
-img.style.maxHeight = '95%';
-img.style.borderRadius = '8px';
-img.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6)';
-img.style.display = 'block';
-img.alt = '';
-zoom.appendChild(img);
-
-// Close when clicking outside the image
-zoom.addEventListener('click', (ev) => {
-  // if click directly on overlay (not on image), close
-  if (ev.target === zoom) {
+  // Add zoom container only once
+  if (!q('zoom-overlay')) {
+    const zoom = document.createElement('div');
+    zoom.id = 'zoom-overlay';
+    zoom.style.position = 'fixed';
+    zoom.style.top = '0';
+    zoom.style.left = '0';
+    zoom.style.width = '100vw';
+    zoom.style.height = '100vh';
+    zoom.style.background = 'rgba(0,0,0,0.8)';
     zoom.style.display = 'none';
-    img.src = '';
-    meta.textContent = '';
-  }
-});
+    zoom.style.alignItems = 'center';
+    zoom.style.justifyContent = 'center';
+    zoom.style.zIndex = '9999';
+    zoom.innerHTML = `<img id="zoom-img" style="max-width:95%;max-height:95%;border-radius:8px;">`;
+    document.body.appendChild(zoom);
 
-// Handle escape key to close
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    const z = q('zoom-overlay');
-    if (z && z.style.display === 'flex') { z.style.display = 'none'; const zi = q('zoom-img'); if (zi) zi.src = ''; const m = q('zoom-meta'); if (m) m.textContent = ''; }
+    zoom.addEventListener('click', () => zoom.style.display = 'none');
   }
-});
 
-// load / error handlers
-img.onload = function () { const m = q('zoom-meta'); if (m) m.textContent = ''; };
-img.onerror = function () {
-  const m = q('zoom-meta');
-  if (m) m.textContent = 'Failed to load image';
-  // keep overlay visible so user sees message; allow clicking outside to close
+  // Attach click handler to modal’s image
+  const img = content.querySelector('img');
+  if (img) {
+    img.style.cursor = 'zoom-in';
+    img.addEventListener('click', () => {
+      const zoom = q('zoom-overlay');
+      const zoomImg = q('zoom-img');
+      zoomImg.src = img.src;
+      zoom.style.display = 'flex';
+    });
+  }
 };
 
-document.body.appendChild(zoom);}
-
-// Use event delegation so newly-inserted images inside modal-content are handled
-content.removeEventListener('click', content._zoomDelegationHandler || (()=>{}));
-content._zoomDelegationHandler = function (ev) {
-const clicked = ev.target.closest && ev.target.closest('img');
-if (!clicked || !content.contains(clicked)) return;// prefer a data-large/data-src attribute for hi-res image if present
-const large = clicked.getAttribute('data-large') || clicked.getAttribute('data-src') || clicked.src || '';
-if (!large) return;
-
-const zoom = q('zoom-overlay');
-const zoomImg = q('zoom-img');
-const meta = q('zoom-meta');
-if (!zoom || !zoomImg) return;
-
-// show loading text while the browser fetches the image
-if (meta) meta.textContent = 'Loading…';
-zoomImg.src = ''; // clear previous src so onload will fire reliably
-// small timeout to ensure UI updates before setting src (helps on some devices)
-setTimeout(() => { zoomImg.src = large; zoom.style.display = 'flex'; }, 10);};
-content.addEventListener('click', content._zoomDelegationHandler);
-};
-
-// Wrap openModal so enableImageZoom runs after content is inserted
-(function(){
+// Auto-run zoom activation whenever the modal opens
 const originalOpenModal = window.openModal;
 window.openModal = function (html) {
-if (typeof originalOpenModal === 'function') originalOpenModal(html);
-else {
-// fallback if original missing
-const modal = q('modal'); const content = q('modal-content');
-if (modal && content) { content.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); }
-}
-// small delay to let DOM settle, then enable zoom
-setTimeout(() => { try { window.enableImageZoom(); } catch (e) { console.error('enableImageZoom error', e); } }, 0);
+  originalOpenModal(html);
+  window.enableImageZoom();
 };
-})();

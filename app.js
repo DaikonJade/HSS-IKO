@@ -293,7 +293,7 @@ window.openDetail = async function(id){
 
     const html = `
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <img src="${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px" alt="">
+        <img class="detail-img" src="$${window.escapeAttr(img)}" data-src="$${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px;cursor:zoom-in" alt="">
         <div style="flex:1;min-width:220px">
           <h2 style="margin:0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>
           ${detailsHtml}

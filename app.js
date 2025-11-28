@@ -94,51 +94,140 @@ function normalizeRow(row, i){
 // helper to coerce to string safely
 function s(v){ return v == null ? '' : String(v).trim(); }
 
-const imageFile = s( getByCanon(row, 'image_filename', 'image filename', 'Image Filename', 'image file') );
-const titleVal = s( getByCanon(row, '中文名字', 'Chinese Name', 'title') );
-const jpTitleVal = s( getByCanon(row, '日文名字', 'Japanese Name', 'jp_title') );
-const typeVal = getByCanon(row, '类型', 'Type', 'type') || '';
-const relevantWorkVal = getByCanon(row, '相关作品', 'Relevant Work', 'relevant_work') || '';
-const relevantCharacterVal = getByCanon(row, '相关人物', 'Relevant Character', 'relevant_character') || '';
-const relevantImageVal = getByCanon(row, '相关柄图', 'Relevant Image', 'relevant_image') || '';
-const releaserVal = getByCanon(row, '发行商', 'Releaser', 'Releaser/Event', 'releaser') || '';
-const releaseDateVal = s( getByCanon(row, '发行日期', 'Release Date', 'Release Year/Date', 'release_date') );
-const releasePriceVal = s( getByCanon(row, '发行价格', 'Release Price', 'release_price') );
-const releaseAreaVal = getByCanon(row, '发行地区', 'Release Area', 'release_area') || '';
-const resourceVal = s( getByCanon(row, '信息来源', 'Resource', 'resource') );
-const locationVal = s( getByCanon(row, '地点', 'Location', 'location') );
-const addressVal = s( getByCanon(row, '具体位置', 'Address', 'address') );
-const operationVal = s( getByCanon(row, '营业时间', 'Operation Hours', 'Opening Hours', 'operation_hours') );
+// prefer raw CSV headers using full header strings + safe variants
+const imageFile = s( getByCanon(row,
+'image_filename',
+'image filename',
+'Image Filename',
+'image file'
+) );
+
+const titleVal = s( getByCanon(row,
+'中文名字 Chinese Name',
+'中文名字 (Chinese Name)',
+'中文名字',
+'Chinese Name',
+'title'
+) );
+
+const jpTitleVal = s( getByCanon(row,
+'日文名字 Japanese Name',
+'日文名字 (Japanese Name)',
+'日文名字',
+'Japanese Name',
+'jp_title'
+) );
+
+const typeVal = getByCanon(row,
+'类型 Type',
+'类型 (Type)',
+'类型',
+'Type',
+'type'
+) || '';
+
+const relevantWorkVal = getByCanon(row,
+'相关作品 Relevant Work',
+'相关作品 (Relevant Work)',
+'相关作品',
+'Relevant Work',
+'relevant_work'
+) || '';
+
+const relevantCharacterVal = getByCanon(row,
+'相关人物 Relevant Character',
+'相关人物 (Relevant Character)',
+'相关人物',
+'Relevant Character',
+'relevant_character'
+) || '';
+
+const relevantImageVal = getByCanon(row,
+'相关柄图 Relevant Image',
+'相关柄图 (Relevant Image)',
+'相关柄图',
+'Relevant Image',
+'relevant_image'
+) || '';
+
+const releaserVal = getByCanon(row,
+'Releaser/Event 发行商',
+'发行商 Releaser',
+'发行商 (Releaser)',
+'发行商',
+'Releaser',
+'releaser'
+) || '';
+
+const releaseDateVal = s( getByCanon(row,
+'发行日期 Release Year/Date',
+'发行日期 Release Date',
+'发行日期 (Release Date)',
+'发行日期',
+'Release Date',
+'release_date'
+) );
+
+const releasePriceVal = s( getByCanon(row,
+'发行价格 Release Price',
+'发行价格 (Release Price)',
+'发行价格',
+'Release Price',
+'release_price'
+) );
+
+const releaseAreaVal = getByCanon(row,
+'发行地区 Release Area',
+'发行地区 (Release Area)',
+'发行地区',
+'Release Area',
+'release_area'
+) || '';
+
+const resourceVal = s( getByCanon(row,
+'信息来源 Resource',
+'信息来源 (Resource)',
+'信息来源',
+'Resource',
+'resource'
+) );
+
+const locationVal = s( getByCanon(row,
+'地点 Location',
+'地点 (Location)',
+'地点',
+'Location',
+'location'
+) );
+
+const addressVal = s( getByCanon(row,
+'具体位置 Address',
+'具体位置 (Address)',
+'具体位置',
+'Address',
+'address'
+) );
+
+const operationVal = s( getByCanon(row,
+'营业时间 Operation Hours',
+'营业时间 (Opening Hours)',
+'营业时间',
+'Operation Hours',
+'Opening Hours',
+'operation_hours'
+) );
+
 // detailed/description merging: prefer detailed, fall back to description
-const rawDetailed = getByCanon(row, '详细信息', 'Detailed Information', 'detailed');
-const rawDescription = getByCanon(row, 'description', 'Description');
-const detailedVal = rawDetailed && String(rawDetailed).trim() ? String(rawDetailed).trim() : (rawDescription && String(rawDescription).trim() ? String(rawDescription).trim() : '');
-
-return {
-id: ( imageFile || ('i' + i) ).toString().trim().replace(/^$/, ''),
-title: titleVal,
-jp_title: jpTitleVal,
-type: Array.isArray(typeVal) ? typeVal.flatMap(v=>splitTags(v)) : splitTags(typeVal),
-relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v=>splitTags(v)) : splitTags(relevantWorkVal),
-relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v=>splitTags(v)) : splitTags(relevantCharacterVal),
-relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v=>splitTags(v)) : splitTags(relevantImageVal),
-releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v=>splitTags(v)) : splitTags(releaserVal),
-release_date: releaseDateVal,
-release_price: releasePriceVal,
-release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v=>splitTags(v)) : splitTags(releaseAreaVal),
-resource: resourceVal,
-location: locationVal,
-address: addressVal,
-operation_hours: operationVal,
-detailed: detailedVal,
-description: detailedVal,
-image_filename: imageFile,
-__rowIndex: i
-};
-}
-
-const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
+const rawDetailed = getByCanon(row,
+'详细信息 Detailed Information',
+'详细信息 (Detailed Information)',
+'详细信息',
+'Detailed Information',
+'detailed'
+);
+const rawDescription = getByCanon(row,
+'description',
+'Description'
 );
 
 // Escaping helpers

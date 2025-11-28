@@ -26,45 +26,65 @@ return (h||'').toString().trim().toLowerCase()
 .trim();
 }
 // window._headerMap will be populated after CSV parsing
-window._headerMap = window._headerMap || {};
-
-// get value by canonical name or a list of candidate names
-// usage: getByCanon(row, 'release date', '发行日期', 'Release Year/Date')
-function getByCanon(row, ...candidates){
+window._headerMap = window._headerMap || {};function getByCanon(row, ...candidates){
 if (!row) return undefined;
 
-// 1) direct exact key lookup (useful when candidate is the full header)
+const headerKeys = Object.keys(row || {});
+if (!headerKeys.length) return undefined;
+
+function norm(s){ return normalizeHeaderName(String(s || '')); }
+
+const normHeaders = headerKeys.map(h => ({ orig: h, norm: norm(h) }));
+const normCandidates = candidates.map(c => ({ orig: c, norm: norm(c) })).filter(c => c.norm);
+
+// 1) direct exact key lookup (fast path)
 for (const c of candidates) {
 if (c == null) continue;
 if (Object.prototype.hasOwnProperty.call(row, c)) return row[c];
 }
 
-// 2) try header map (exact normalized match)
-for (const c of candidates) {
-if (!c) continue;
-const norm = normalizeHeaderName(c);
-const mapped = window._headerMap && window._headerMap[norm];
+// 2) try header map exact normalized lookup
+for (const c of normCandidates) {
+const mapped = window._headerMap && window._headerMap[c.norm];
 if (mapped && Object.prototype.hasOwnProperty.call(row, mapped)) return row[mapped];
 }
 
-// 3) tolerant normalized matching:
-//    if a normalized candidate is contained in a normalized header key (or vice-versa),
-//    treat that as a match.
-const normCandidates = candidates.map(c => normalizeHeaderName(c)).filter(Boolean);
-for (const rk of Object.keys(row || {})) {
-const nk = normalizeHeaderName(rk);
-for (const nc of normCandidates) {
-if (!nc) continue;
-if (nk === nc || nk.includes(nc) || nc.includes(nk)) {
-return row[rk];
-}
-}
+// 3) scoring: evaluate each header against all candidates and pick highest score
+function scoreMatch(headerNorm, candNorm){
+if (!headerNorm || !candNorm) return 0;
+if (headerNorm === candNorm) return 100;
+if (headerNorm.includes(candNorm)) return 80;
+if (candNorm.includes(headerNorm)) return 60;
+const hTokens = headerNorm.split(' ').filter(Boolean);
+const cTokens = candNorm.split(' ').filter(Boolean);
+if (cTokens.length && cTokens.every(t => hTokens.includes(t))) return 40;
+const overlap = cTokens.filter(t => hTokens.includes(t)).length;
+if (overlap > 0) return 10 + overlap;
+return 0;
 }
 
-// 4) fallback: try returning any direct candidate key if somehow present
-for (const c of candidates) {
+let best = { score: 0, header: null };
+for (const h of normHeaders){
+for (const c of normCandidates){
+const s = scoreMatch(h.norm, c.norm);
+if (s > best.score){
+best.score = s;
+best.header = h.orig;
+}
+if (best.score >= 100) break;
+}
+if (best.score >= 100) break;
+}
+
+if (best.header) return row[best.header];
+
+// 4) last fallback: return first non-empty candidate direct key or header found
+for (const c of candidates){
 if (c == null) continue;
 if (row[c] !== undefined) return row[c];
+}
+for (const h of headerKeys){
+if (row[h] !== undefined) return row[h];
 }
 
 return undefined;

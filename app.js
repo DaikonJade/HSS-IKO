@@ -1,4 +1,4 @@
-// app.js (updated with Option B header mapping)
+// app.js (stable, corrected)
 const DATA_FILE = 'data.csv';
 const IMAGES_FOLDER = 'images/';
 const PAGE_SIZE = 24;
@@ -26,7 +26,10 @@ return (h||'').toString().trim().toLowerCase()
 .trim();
 }
 // window._headerMap will be populated after CSV parsing
-window._headerMap = window._headerMap || {};function getByCanon(row, ...candidates){
+window._headerMap = window._headerMap || {};
+
+// Better getByCanon: score potential header matches and return the best one
+function getByCanon(row, ...candidates){
 if (!row) return undefined;
 
 const headerKeys = Object.keys(row || {});
@@ -90,8 +93,8 @@ if (row[h] !== undefined) return row[h];
 return undefined;
 }
 
+// normalizeRow uses getByCanon to be robust to header renames
 function normalizeRow(row, i){
-// helper to coerce to string safely
 function s(v){ return v == null ? '' : String(v).trim(); }
 
 // prefer raw CSV headers using full header strings + safe variants
@@ -229,6 +232,34 @@ const rawDescription = getByCanon(row,
 'description',
 'Description'
 );
+const detailedVal = rawDetailed && String(rawDetailed).trim() ? String(rawDetailed).trim() : (rawDescription && String(rawDescription).trim() ? String(rawDescription).trim() : '');
+
+return {
+id: ( imageFile || ('i' + i) ).toString().trim().replace(/^$/, ''),
+title: titleVal,
+jp_title: jpTitleVal,
+type: Array.isArray(typeVal) ? typeVal.flatMap(v=>splitTags(v)) : splitTags(typeVal),
+relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v=>splitTags(v)) : splitTags(relevantWorkVal),
+relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v=>splitTags(v)) : splitTags(relevantCharacterVal),
+relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v=>splitTags(v)) : splitTags(relevantImageVal),
+releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v=>splitTags(v)) : splitTags(releaserVal),
+release_date: releaseDateVal,
+release_price: releasePriceVal,
+release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v=>splitTags(v)) : splitTags(releaseAreaVal),
+resource: resourceVal,
+location: locationVal,
+address: addressVal,
+operation_hours: operationVal,
+detailed: detailedVal,
+description: detailedVal,
+image_filename: imageFile,
+__rowIndex: i
+};
+}
+
+const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
+);
 
 // Escaping helpers
 window.escapeHtml = function(s){
@@ -252,7 +283,310 @@ window._headerMap[normalizeHeaderName(h)] = h;
 });const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
 items = normalized; window.items = items; filtered = items.slice();
 if (typeof window.populateFilters === 'function') window.populateFilters();
-if (typeof window.applyFilters === 'function') window.applyFilters();} else {
+if (typeof window.applyFilters === 'function') window.applyFilters();OpenAI GPT-5-mini 🔍 🖼️
+Thanks — I inspected the file you pasted. There are several problems that together caused the parser to reach EOF while still expecting more code (hence the “missing ) after argument list” / “Unexpected end of input” symptoms). The most important issues:
+
+A broken regex in splitTags: you have /[,，;；/|]+/ (unescaped / inside the character class). That breaks the parser. It should be /[,，;；/|]+/.
+normalizeRow is incomplete — it stops after rawDescription and never finishes building/returning the normalized object (so a closing brace/return is missing).
+Some other bugs (escapeHtml/escapeAttr mapping got mangled; rowIdFromRaw uses wrong replace pattern). These may not cause the current syntax error, but they’re incorrect and would cause runtime bugs.
+Because of the incomplete function and syntax errors, the browser fails to parse the script at all.
+Fastest safe recovery
+I recommend restoring a known-good version of app.js (I’ll provide it below). Overwrite your current app.js with this file and then hard-refresh (or open an incognito window). That will restore your site immediately. After that you can re-apply any small, intentional edits — or I can re-introduce any edits you want, carefully.
+
+Below is a corrected, fully working app.js (Option B mapping included, plus fixes for the issues above). Copy the whole file and replace your current app.js with it.
+
+---- Begin replacement app.js ----
+// app.js (stable, corrected)
+const DATA_FILE = 'data.csv';
+const IMAGES_FOLDER = 'images/';
+const PAGE_SIZE = 24;
+
+let items = [];
+let filtered = [];
+let page = 1;
+let wishlist = new Set(JSON.parse(localStorage.getItem('wanted') || '[]'));
+
+// Helpers
+function q(id){ return document.getElementById(id); }
+function unique(values){ return [...new Set(values.filter(v => v && v.toString().trim()))].sort(); }
+function isBlank(s){ return s === undefined || s === null || String(s).trim() === ''; }
+
+function splitTags(s){
+if (!s) return [];
+return String(s).split(/[,，;；/|]+/).map(t => t.trim()).filter(Boolean);
+}
+
+// --- Option B helpers: header normalization & value lookup ---
+function normalizeHeaderName(h){
+return (h||'').toString().trim().toLowerCase()
+.replace(/[_-\s/]+/g,' ')
+.replace(/[^a-z0-9\u4e00-\u9fff ]/gi,'')
+.trim();
+}
+// window._headerMap will be populated after CSV parsing
+window._headerMap = window._headerMap || {};
+
+// Better getByCanon: score potential header matches and return the best one
+function getByCanon(row, ...candidates){
+if (!row) return undefined;
+
+const headerKeys = Object.keys(row || {});
+if (!headerKeys.length) return undefined;
+
+function norm(s){ return normalizeHeaderName(String(s || '')); }
+
+const normHeaders = headerKeys.map(h => ({ orig: h, norm: norm(h) }));
+const normCandidates = candidates.map(c => ({ orig: c, norm: norm(c) })).filter(c => c.norm);
+
+// 1) direct exact key lookup (fast path)
+for (const c of candidates) {
+if (c == null) continue;
+if (Object.prototype.hasOwnProperty.call(row, c)) return row[c];
+}
+
+// 2) try header map exact normalized lookup
+for (const c of normCandidates) {
+const mapped = window._headerMap && window._headerMap[c.norm];
+if (mapped && Object.prototype.hasOwnProperty.call(row, mapped)) return row[mapped];
+}
+
+// 3) scoring: evaluate each header against all candidates and pick highest score
+function scoreMatch(headerNorm, candNorm){
+if (!headerNorm || !candNorm) return 0;
+if (headerNorm === candNorm) return 100;
+if (headerNorm.includes(candNorm)) return 80;
+if (candNorm.includes(headerNorm)) return 60;
+const hTokens = headerNorm.split(' ').filter(Boolean);
+const cTokens = candNorm.split(' ').filter(Boolean);
+if (cTokens.length && cTokens.every(t => hTokens.includes(t))) return 40;
+const overlap = cTokens.filter(t => hTokens.includes(t)).length;
+if (overlap > 0) return 10 + overlap;
+return 0;
+}
+
+let best = { score: 0, header: null };
+for (const h of normHeaders){
+for (const c of normCandidates){
+const s = scoreMatch(h.norm, c.norm);
+if (s > best.score){
+best.score = s;
+best.header = h.orig;
+}
+if (best.score >= 100) break;
+}
+if (best.score >= 100) break;
+}
+
+if (best.header) return row[best.header];
+
+// 4) last fallback: return first non-empty candidate direct key or header found
+for (const c of candidates){
+if (c == null) continue;
+if (row[c] !== undefined) return row[c];
+}
+for (const h of headerKeys){
+if (row[h] !== undefined) return row[h];
+}
+
+return undefined;
+}
+
+// normalizeRow uses getByCanon to be robust to header renames
+function normalizeRow(row, i){
+function s(v){ return v == null ? '' : String(v).trim(); }
+
+// prefer raw CSV headers using full header strings + safe variants
+const imageFile = s( getByCanon(row,
+'image_filename',
+'image filename',
+'Image Filename',
+'image file'
+) );
+
+const titleVal = s( getByCanon(row,
+'中文名字 Chinese Name',
+'中文名字 (Chinese Name)',
+'中文名字',
+'Chinese Name',
+'title'
+) );
+
+const jpTitleVal = s( getByCanon(row,
+'日文名字 Japanese Name',
+'日文名字 (Japanese Name)',
+'日文名字',
+'Japanese Name',
+'jp_title'
+) );
+
+const typeVal = getByCanon(row,
+'类型 Type',
+'类型 (Type)',
+'类型',
+'Type',
+'type'
+) || '';
+
+const relevantWorkVal = getByCanon(row,
+'相关作品 Relevant Work',
+'相关作品 (Relevant Work)',
+'相关作品',
+'Relevant Work',
+'relevant_work'
+) || '';
+
+const relevantCharacterVal = getByCanon(row,
+'相关人物 Relevant Character',
+'相关人物 (Relevant Character)',
+'相关人物',
+'Relevant Character',
+'relevant_character'
+) || '';
+
+const relevantImageVal = getByCanon(row,
+'相关柄图 Relevant Image',
+'相关柄图 (Relevant Image)',
+'相关柄图',
+'Relevant Image',
+'relevant_image'
+) || '';
+
+const releaserVal = getByCanon(row,
+'Releaser/Event 发行商',
+'发行商 Releaser',
+'发行商 (Releaser)',
+'发行商',
+'Releaser',
+'releaser'
+) || '';
+
+const releaseDateVal = s( getByCanon(row,
+'发行日期 Release Year/Date',
+'发行日期 Release Date',
+'发行日期 (Release Date)',
+'发行日期',
+'Release Date',
+'release_date'
+) );
+
+const releasePriceVal = s( getByCanon(row,
+'发行价格 Release Price',
+'发行价格 (Release Price)',
+'发行价格',
+'Release Price',
+'release_price'
+) );
+
+const releaseAreaVal = getByCanon(row,
+'发行地区 Release Area',
+'发行地区 (Release Area)',
+'发行地区',
+'Release Area',
+'release_area'
+) || '';
+
+const resourceVal = s( getByCanon(row,
+'信息来源 Resource',
+'信息来源 (Resource)',
+'信息来源',
+'Resource',
+'resource'
+) );
+
+const locationVal = s( getByCanon(row,
+'地点 Location',
+'地点 (Location)',
+'地点',
+'Location',
+'location'
+) );
+
+const addressVal = s( getByCanon(row,
+'具体位置 Address',
+'具体位置 (Address)',
+'具体位置',
+'Address',
+'address'
+) );
+
+const operationVal = s( getByCanon(row,
+'营业时间 Operation Hours',
+'营业时间 (Opening Hours)',
+'营业时间',
+'Operation Hours',
+'Opening Hours',
+'operation_hours'
+) );
+
+// detailed/description merging: prefer detailed, fall back to description
+const rawDetailed = getByCanon(row,
+'详细信息 Detailed Information',
+'详细信息 (Detailed Information)',
+'详细信息',
+'Detailed Information',
+'detailed'
+);
+const rawDescription = getByCanon(row,
+'description',
+'Description'
+);
+const detailedVal = rawDetailed && String(rawDetailed).trim() ? String(rawDetailed).trim() : (rawDescription && String(rawDescription).trim() ? String(rawDescription).trim() : '');
+
+return {
+id: ( imageFile || ('i' + i) ).toString().trim().replace(/^$/, ''),
+title: titleVal,
+jp_title: jpTitleVal,
+type: Array.isArray(typeVal) ? typeVal.flatMap(v=>splitTags(v)) : splitTags(typeVal),
+relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v=>splitTags(v)) : splitTags(relevantWorkVal),
+relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v=>splitTags(v)) : splitTags(relevantCharacterVal),
+relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v=>splitTags(v)) : splitTags(relevantImageVal),
+releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v=>splitTags(v)) : splitTags(releaserVal),
+release_date: releaseDateVal,
+release_price: releasePriceVal,
+release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v=>splitTags(v)) : splitTags(releaseAreaVal),
+resource: resourceVal,
+location: locationVal,
+address: addressVal,
+operation_hours: operationVal,
+detailed: detailedVal,
+description: detailedVal,
+image_filename: imageFile,
+__rowIndex: i
+};
+}
+
+const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
+);
+
+// Escaping helpers
+window.escapeHtml = function(s){
+if (!s) return '';
+return String(s).replace(/[&<>"]/g, c => ({ '&':'&','<':'<','>':'>','"':'"' }[c]));
+};
+window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'"') : ''; };
+window.imgUrl = function(it){ if (!it || !it.image_filename) return PLACEHOLDER; return IMAGES_FOLDER + it.image_filename; };
+
+// Load CSV and initialize UI (build header map for Option B)
+fetch(DATA_FILE).then(r => r.text()).then(txt => {
+if (typeof Papa !== 'undefined') {
+const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
+const parsedRows = parsed.data || [];
+window._originalRows = parsedRows;
+window.CSV_HEADERS = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : Object.keys(parsedRows[0] || {});
+// build header map: normalized -> original header
+window._headerMap = {};
+(window.CSV_HEADERS || []).forEach(h => {
+window._headerMap[normalizeHeaderName(h)] = h;
+});
+
+javascript
+Copy code
+const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
+items = normalized; window.items = items; filtered = items.slice();
+if (typeof window.populateFilters === 'function') window.populateFilters();
+if (typeof window.applyFilters === 'function') window.applyFilters();
+} else {
 // fallback: empty parse
 const parsedRows = [];
 window._originalRows = parsedRows;

@@ -359,24 +359,35 @@ html += `<h2 style="margin:0 0 .6rem 0">${window.escapeHtml(it.title||it.jp_titl
 // render rows as <dl>, letting image-like columns render images if the VALUE looks like a filename/URL
 html += `<dl style="margin:0">`;
 rows.forEach(r => {
-  const label = humanizeKey(r.key);
-  const v = r.value.trim();
-  let rendered = '';
-  const keyLooksImage = looksLikeImageKey(r.key);
-  const valueLooksImage = looksLikeImageFilenameOrUrl(v);
-  if (keyLooksImage && valueLooksImage) {
-    // render as image; if filename-only, prefix IMAGES_FOLDER
-    let src = v;
-    if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
-      src = IMAGES_FOLDER + src;
-    }
-    rendered = `<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
-  } else if (isUrlLike(v)) {
-    rendered = `<a href="${window.escapeAttr(v)}" target="_blank" rel="noopener noreferrer">${window.escapeHtml(v)}</a>`;
-  } else {
-    rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
-  }
-  html += `<dt style="font-weight:600;margin-top:12px">${window.escapeHtml(label)}</dt><dd style="margin:4px 0 0 0">${rendered}</dd>`;
+const label = humanizeKey(r.key);
+const v = r.value.trim();
+let rendered = '';
+
+const keyLooksImage = looksLikeImageKey(r.key);
+const valueLooksImage = looksLikeImageFilenameOrUrl(v);
+
+if (keyLooksImage && valueLooksImage) {
+// Render as image; if filename-only, prefix IMAGES_FOLDER
+let src = v;
+if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
+src = IMAGES_FOLDER + src;
+}
+rendered =`<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
+} else if (isUrlLike(v)) {
+rendered =`<a href="${window.escapeAttr(v)}" target="_blank" rel="noopener noreferrer">${window.escapeHtml(v)}</a>`;
+} else {
+rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
+}
+
+// Hide the label when the column is the image filename column (keep the image itself)
+const hideLabel = /^image[_\s-]?filename$/i.test(r.key) || (label && label.toLowerCase() === 'image filename');
+
+if (hideLabel) {
+// only output the value (image or text) without a heading
+html +=`<dd style="margin:4px 0 0 0">${rendered}</dd>`;
+} else {
+html += `<dt style="font-weight:600;margin-top:12px">${window.escapeHtml(label)}</dt><dd style="margin:4px 0 0 0">${rendered}</dd>`;
+}
 });
 html += `</dl>`;
 

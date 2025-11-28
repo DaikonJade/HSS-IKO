@@ -90,10 +90,26 @@ return undefined;
 function normalizeRow(row, i){
 function s(v){ return v == null ? '' : String(v).trim(); }
 
+// prefer raw CSV headers using full header strings + safe variants
 const imageFile = s(getByCanon(row, 'image_filename', 'image filename', 'Image Filename', 'image file'));
 
-const titleVal = s(getByCanon(row, '中文名字 Chinese Name', '中文名字 (Chinese Name)', '中文名字', 'Chinese Name', 'title'));
-const jpTitleVal = s(getByCanon(row, '日文名字 Japanese Name', '日文名字 (Japanese Name)', '日文名字', 'Japanese Name', 'jp_title'));
+// Prefer Chinese title when present; fall back to Japanese
+const rawChinese = getByCanon(row,
+'中文名字 Chinese Name',
+'中文名字 (Chinese Name)',
+'中文名字',
+'Chinese Name',
+'title'
+);
+const rawJapanese = getByCanon(row,
+'日文名字 Japanese Name',
+'日文名字 (Japanese Name)',
+'日文名字',
+'Japanese Name',
+'jp_title'
+);
+const titleVal = s(rawChinese || rawJapanese || '');
+const jpTitleVal = s(rawJapanese || rawChinese || '');
 
 const typeVal = getByCanon(row, '类型 Type', '类型 (Type)', '类型', 'Type', 'type') || '';
 const relevantWorkVal = getByCanon(row, '相关作品 Relevant Work', '相关作品 (Relevant Work)', '相关作品', 'Relevant Work', 'relevant_work') || '';
@@ -396,7 +412,27 @@ if(!it){
 }
 if(!it){ console.warn('item not found', id); return; }
 
-const rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
+// find corresponding raw row in originalRows (try several fallbacks)
+let rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
+if (!rawRow && it.image_filename) {
+  // try matching by image filename field (raw values may be filenames)
+  rawRow = (originalRows || []).find((r,i) => {
+    const v = r['image_filename'] || r.image_filename || '';
+    return v && String(v).trim() === String(it.image_filename || '').trim();
+  });
+}
+if (!rawRow) {
+  // try matching by Chinese title or Japanese title (raw CSV header may vary)
+  rawRow = (originalRows || []).find((r) => {
+    const cand1 = getByCanon(r, '中文名字 Chinese Name', '中文名字', 'Chinese Name');
+    const cand2 = getByCanon(r, '日文名字 Japanese Name', '日文名字', 'Japanese Name');
+    const c1 = cand1 ? String(cand1).trim() : '';
+    const c2 = cand2 ? String(cand2).trim() : '';
+    const t = String(it.title || '').trim();
+    const j = String(it.jp_title || '').trim();
+    return (c1 && t && c1 === t) || (c2 && j && c2 === j);
+  });
+}
 
 const headers = Array.isArray(window.CSV_HEADERS) && window.CSV_HEADERS.length
   ? window.CSV_HEADERS.slice()

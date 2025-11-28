@@ -502,7 +502,7 @@ if (closeBtn) closeBtn.addEventListener('click', () => window.closeModal && wind
 
 window.toggleWishlist = function(id, btn){
 // locate button if not provided
-const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`;if (wishlist.has(id)){
+const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);if (wishlist.has(id)){
 wishlist.delete(id);
 if (selectorBtn){
 selectorBtn.classList.remove('in');

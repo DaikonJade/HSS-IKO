@@ -514,13 +514,19 @@ html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data
 html += `</div>`;
 html += `</div>`;
 
-// Insert HTML directly into the modal and show it (safer than delegating to openModal)
+// Insert HTML and re-apply shortly after to resist other in-page overwrites
 (function(){
 const modalEl = q('modal');
 const contentEl = q('modal-content');
-if (contentEl) contentEl.innerHTML = html;
+if (!contentEl) { if (modalEl) modalEl.style.display = 'flex'; return; }
+
+// set now
+contentEl.innerHTML = html;
 if (modalEl) { modalEl.style.display = 'flex'; modalEl.setAttribute('aria-hidden','false'); }
-else alert(it.title || it.id);
+
+// re-apply twice more to override any immediate overwrite (covers race conditions)
+setTimeout(() => { if (contentEl.innerHTML !== html) contentEl.innerHTML = html; }, 80);
+setTimeout(() => { if (contentEl.innerHTML !== html) contentEl.innerHTML = html; }, 260);
 })();}catch(e){
 console.error('openDetail error', e);
 }

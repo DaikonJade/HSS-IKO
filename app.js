@@ -514,7 +514,14 @@ html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data
 html += `</div>`;
 html += `</div>`;
 
-if(window.openModal) window.openModal(html); else alert(it.title||it.id);}catch(e){
+// Insert HTML directly into the modal and show it (safer than delegating to openModal)
+(function(){
+const modalEl = q('modal');
+const contentEl = q('modal-content');
+if (contentEl) contentEl.innerHTML = html;
+if (modalEl) { modalEl.style.display = 'flex'; modalEl.setAttribute('aria-hidden','false'); }
+else alert(it.title || it.id);
+})();}catch(e){
 console.error('openDetail error', e);
 }
 };

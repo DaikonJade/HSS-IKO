@@ -478,56 +478,93 @@ if(rows.length === 0){
   });
 }
 
-let html = `<div style="max-width:900px;margin:0 auto">`;
-html += `<h2 style="margin:0 0 .6rem 0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
-html += `<dl style="margin:0">`;
-rows.forEach(r => {
-  const label = humanizeKey(r.key);
-  const v = r.value.trim();
-  let rendered = '';
-  const keyLooksImage = looksLikeImageKey(r.key);
-  const valueLooksImage = looksLikeImageFilenameOrUrl(v);
+// === robust details builder + safe insertion (replace the older html-building + insertion) ===
+let html = '<div style="max-width:900px;margin:0 auto">';
+const title = (it && (it.title || it.jp_title || it.id)) || (rawRow && ((typeof getByCanon === 'function' && (getByCanon(rawRow,'中文名字 Chinese Name')||getByCanon(rawRow,'日文名字 Japanese Name'))) || rawRow.image_filename || cleaned));
+html += '<h2 style="margin:0 0 .6rem 0">' + (window.escapeHtml ? window.escapeHtml(title) : (title||'')) + '</h2>';
 
-  if (keyLooksImage && valueLooksImage) {
-    let src = v;
-    if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
-      src = IMAGES_FOLDER + src;
-    }
-    rendered = `<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
-  } else if (isUrlLike(v)) {
-    rendered = `<a href="${window.escapeAttr(v)}" target="_blank" rel="noopener noreferrer">${window.escapeHtml(v)}</a>`;
-  } else {
-    rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
-  }
-
-  const hideLabel = /^image[_\s-]?filename$/i.test(r.key) || (label && label.toLowerCase() === 'image filename');
-  if (hideLabel) {
-    html += `<dd style="margin:4px 0 0 0">${rendered}</dd>`;
-  } else {
-    html += `<dt style="font-weight:600;margin-top:12px">${window.escapeHtml(label)}</dt><dd style="margin:4px 0 0 0">${rendered}</dd>`;
-  }
+// build outputRows defensively
+const outputRows = [];
+headers.forEach(function(key){
+if (!key) return;
+let val;
+if (rawRow && Object.prototype.hasOwnProperty.call(rawRow, key)) val = rawRow[key];
+else if (it && Object.prototype.hasOwnProperty.call(it, key)) val = it[key];
+else return;
+if (Array.isArray(val)) val = val.join(', ');
+val = val == null ? '' : String(val);
+if (!val.trim()) return;
+outputRows.push({ key: key, value: val });
 });
-html += `</dl>`;
+if (outputRows.length === 0) {
+Object.keys(it || {}).forEach(function(k){
+const raw = it[k];
+if (raw === undefined || raw === null) return;
+const v = Array.isArray(raw) ? raw.join(', ') : String(raw);
+if (!v.trim()) return;
+outputRows.push({ key: k, value: v });
+});
+}
 
-html += `<div style="margin-top:12px">`;
-html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`;
-html += `</div>`;
-html += `</div>`;
+function humanizeKey(key){
+if(!key) return '';
+const s = key.replace(/[_-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'$1 $2').toLowerCase().trim();
+return s.split(' ').map(function(p){ return p.charAt(0).toUpperCase()+p.slice(1); }).join(' ');
+}
+function isUrlLike(v){ return v && /(https?:)?///i.test(String(v)); }
+function looksLikeImageFilenameOrUrl(v){
+if(!v) return false;
+const s = String(v).trim();
+if (s.indexOf('data:') === 0) return true;
+if (/(https?:)?///i.test(s) && /.(jpe?g|png|gif|webp|avif|svg)(?:[?#].)?$/i.test(s)) return true;
+return /.(jpe?g|png|gif|webp|avif|svg)(?:[?#].)?$/i.test(s);
+}
 
-// Insert HTML and re-apply shortly after to resist other in-page overwrites
+html += '<dl style="margin:0">';
+outputRows.forEach(function(r){
+const label = humanizeKey(r.key);
+const v = (r.value||'').toString().trim();
+
+const keyLooksImage = /(^|[\s-/])(?:image|img|thumb|poster|cover|src|file|filename|url|photo)(?:$|[\s-/])/i.test(r.key) ||
+/image|img|thumb|poster|cover|src|file|filename|url|photo/i.test(r.key);
+const valueLooksImage = looksLikeImageFilenameOrUrl(v);
+
+let rendered = '';
+if (keyLooksImage && valueLooksImage) {
+let src = v;
+if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) src = (window.IMAGES_FOLDER || 'images/') + src;
+rendered = '<div style="margin:6px 0"><img src="' + (window.escapeAttr ? window.escapeAttr(src) : src) + '" alt="' + (window.escapeAttr ? window.escapeAttr(label) : label) + '" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>';
+} else if (isUrlLike(v)) {
+rendered = '<a href="' + (window.escapeAttr ? window.escapeAttr(v) : v) + '" target="_blank" rel="noopener noreferrer">' + (window.escapeHtml ? window.escapeHtml(v) : v) + '</a>';
+} else {
+rendered = '<div style="white-space:pre-wrap;word-break:break-word;">' + (window.escapeHtml ? window.escapeHtml(v) : v) + '</div>';
+}
+
+const hideLabel = /^image[_\s-]?filename$/i.test(r.key) || (label && label.toLowerCase() === 'image filename');
+if (hideLabel) {
+html += '<dd style="margin:4px 0 0 0">' + rendered + '</dd>';
+} else {
+html += '<dt style="font-weight:600;margin-top:12px">' + (window.escapeHtml ? window.escapeHtml(label) : label) + '</dt><dd style="margin:4px 0 0 0">' + rendered + '</dd>';
+}
+});
+html += '</dl>';
+
+// wishlist control
+html += '<div style="margin-top:12px"><button class="wishlist-toggle ' + (wishlist.has(it && it.id ? it.id : '') ? 'in' : '') + '" data-id="' + (window.escapeAttr ? window.escapeAttr(it && it.id ? it.id : cleaned) : (it && it.id ? it.id : cleaned)) + '" aria-pressed="' + (wishlist.has(it && it.id ? it.id : '') ? 'true' : 'false') + '" aria-label="' + (wishlist.has(it && it.id ? it.id : '') ? 'Remove from wishlist' : 'Add to wishlist') + '">' + (wishlist.has(it && it.id ? it.id : '') ? '♥' : '♡') + '</button></div>';
+html += '</div>';
+
+// safe insertion + reapply
 (function(){
 const modalEl = q('modal');
 const contentEl = q('modal-content');
 if (!contentEl) { if (modalEl) modalEl.style.display = 'flex'; return; }
-
-// set now
 contentEl.innerHTML = html;
+contentEl.__lastBuiltHtmlForDebug = html;
 if (modalEl) { modalEl.style.display = 'flex'; modalEl.setAttribute('aria-hidden','false'); }
-
-// re-apply twice more to override any immediate overwrite (covers race conditions)
-setTimeout(() => { if (contentEl.innerHTML !== html) contentEl.innerHTML = html; }, 80);
-setTimeout(() => { if (contentEl.innerHTML !== html) contentEl.innerHTML = html; }, 260);
-})();}catch(e){
+setTimeout(() => { if ((contentEl.innerHTML||'').trim() !== (html||'').trim()) contentEl.innerHTML = html; }, 100);
+setTimeout(() => { if ((contentEl.innerHTML||'').trim() !== (html||'').trim()) contentEl.innerHTML = html; }, 300);
+})();
+// === end replacement ===}catch(e){
 console.error('openDetail error', e);
 }
 };

@@ -1,4 +1,5 @@
-// app.js (stable, corrected)
+/* app.js — full corrected version (Option B header mapping + UI) */
+
 const DATA_FILE = 'data.csv';
 const IMAGES_FOLDER = 'images/';
 const PAGE_SIZE = 24;
@@ -10,56 +11,50 @@ let wishlist = new Set(JSON.parse(localStorage.getItem('wanted') || '[]'));
 
 // Helpers
 function q(id){ return document.getElementById(id); }
-function unique(values){ return [...new Set(values.filter(v => v && v.toString().trim()))].sort(); }
+function unique(values){ return [...new Set((values || []).filter(v => v && v.toString().trim()))].sort(); }
 function isBlank(s){ return s === undefined || s === null || String(s).trim() === ''; }
 
 function splitTags(s){
 if (!s) return [];
 return String(s).split(/[,，;；/|]+/).map(t => t.trim()).filter(Boolean);
-}
-
-// --- Option B helpers: header normalization & value lookup ---
+}// --- Header mapping helpers (Option B) ---
 function normalizeHeaderName(h){
 return (h||'').toString().trim().toLowerCase()
 .replace(/[_-\s/]+/g,' ')
 .replace(/[^a-z0-9\u4e00-\u9fff ]/gi,'')
 .trim();
 }
-// window._headerMap will be populated after CSV parsing
 window._headerMap = window._headerMap || {};
 
-// Better getByCanon: score potential header matches and return the best one
+// Scored header matcher: getByCanon(row, 'Release Date', '发行日期', ...)
 function getByCanon(row, ...candidates){
 if (!row) return undefined;
-
 const headerKeys = Object.keys(row || {});
 if (!headerKeys.length) return undefined;
-
-function norm(s){ return normalizeHeaderName(String(s || '')); }
-
+const norm = s => normalizeHeaderName(String(s || ''));
 const normHeaders = headerKeys.map(h => ({ orig: h, norm: norm(h) }));
 const normCandidates = candidates.map(c => ({ orig: c, norm: norm(c) })).filter(c => c.norm);
 
-// 1) direct exact key lookup (fast path)
+// 1) direct exact key
 for (const c of candidates) {
 if (c == null) continue;
 if (Object.prototype.hasOwnProperty.call(row, c)) return row[c];
 }
 
-// 2) try header map exact normalized lookup
+// 2) header map match
 for (const c of normCandidates) {
 const mapped = window._headerMap && window._headerMap[c.norm];
 if (mapped && Object.prototype.hasOwnProperty.call(row, mapped)) return row[mapped];
 }
 
-// 3) scoring: evaluate each header against all candidates and pick highest score
-function scoreMatch(headerNorm, candNorm){
-if (!headerNorm || !candNorm) return 0;
-if (headerNorm === candNorm) return 100;
-if (headerNorm.includes(candNorm)) return 80;
-if (candNorm.includes(headerNorm)) return 60;
-const hTokens = headerNorm.split(' ').filter(Boolean);
-const cTokens = candNorm.split(' ').filter(Boolean);
+// 3) scoring match
+function scoreMatch(hn, cn){
+if (!hn || !cn) return 0;
+if (hn === cn) return 100;
+if (hn.includes(cn)) return 80;
+if (cn.includes(hn)) return 60;
+const hTokens = hn.split(' ').filter(Boolean);
+const cTokens = cn.split(' ').filter(Boolean);
 if (cTokens.length && cTokens.every(t => hTokens.includes(t))) return 40;
 const overlap = cTokens.filter(t => hTokens.includes(t)).length;
 if (overlap > 0) return 10 + overlap;
@@ -78,10 +73,9 @@ if (best.score >= 100) break;
 }
 if (best.score >= 100) break;
 }
-
 if (best.header) return row[best.header];
 
-// 4) last fallback: return first non-empty candidate direct key or header found
+// 4) fallback direct key or first header
 for (const c of candidates){
 if (c == null) continue;
 if (row[c] !== undefined) return row[c];
@@ -89,163 +83,50 @@ if (row[c] !== undefined) return row[c];
 for (const h of headerKeys){
 if (row[h] !== undefined) return row[h];
 }
-
 return undefined;
 }
 
-// normalizeRow uses getByCanon to be robust to header renames
+// normalizeRow uses getByCanon for robust header lookups
 function normalizeRow(row, i){
 function s(v){ return v == null ? '' : String(v).trim(); }
 
-// prefer raw CSV headers using full header strings + safe variants
-const imageFile = s( getByCanon(row,
-'image_filename',
-'image filename',
-'Image Filename',
-'image file'
-) );
+const imageFile = s(getByCanon(row, 'image_filename', 'image filename', 'Image Filename', 'image file'));
 
-const titleVal = s( getByCanon(row,
-'中文名字 Chinese Name',
-'中文名字 (Chinese Name)',
-'中文名字',
-'Chinese Name',
-'title'
-) );
+const titleVal = s(getByCanon(row, '中文名字 Chinese Name', '中文名字 (Chinese Name)', '中文名字', 'Chinese Name', 'title'));
+const jpTitleVal = s(getByCanon(row, '日文名字 Japanese Name', '日文名字 (Japanese Name)', '日文名字', 'Japanese Name', 'jp_title'));
 
-const jpTitleVal = s( getByCanon(row,
-'日文名字 Japanese Name',
-'日文名字 (Japanese Name)',
-'日文名字',
-'Japanese Name',
-'jp_title'
-) );
+const typeVal = getByCanon(row, '类型 Type', '类型 (Type)', '类型', 'Type', 'type') || '';
+const relevantWorkVal = getByCanon(row, '相关作品 Relevant Work', '相关作品 (Relevant Work)', '相关作品', 'Relevant Work', 'relevant_work') || '';
+const relevantCharacterVal = getByCanon(row, '相关人物 Relevant Character', '相关人物 (Relevant Character)', '相关人物', 'Relevant Character', 'relevant_character') || '';
+const relevantImageVal = getByCanon(row, '相关柄图 Relevant Image', '相关柄图 (Relevant Image)', '相关柄图', 'Relevant Image', 'relevant_image') || '';
 
-const typeVal = getByCanon(row,
-'类型 Type',
-'类型 (Type)',
-'类型',
-'Type',
-'type'
-) || '';
+const releaserVal = getByCanon(row, 'Releaser/Event 发行商', '发行商 Releaser', '发行商 (Releaser)', '发行商', 'Releaser', 'releaser') || '';
 
-const relevantWorkVal = getByCanon(row,
-'相关作品 Relevant Work',
-'相关作品 (Relevant Work)',
-'相关作品',
-'Relevant Work',
-'relevant_work'
-) || '';
+const releaseDateVal = s(getByCanon(row, '发行日期 Release Year/Date', '发行日期 Release Date', '发行日期 (Release Date)', '发行日期', 'Release Date', 'release_date'));
+const releasePriceVal = s(getByCanon(row, '发行价格 Release Price', '发行价格 (Release Price)', '发行价格', 'Release Price', 'release_price'));
+const releaseAreaVal = getByCanon(row, '发行地区 Release Area', '发行地区 (Release Area)', '发行地区', 'Release Area', 'release_area') || '';
 
-const relevantCharacterVal = getByCanon(row,
-'相关人物 Relevant Character',
-'相关人物 (Relevant Character)',
-'相关人物',
-'Relevant Character',
-'relevant_character'
-) || '';
+const resourceVal = s(getByCanon(row, '信息来源 Resource', '信息来源 (Resource)', '信息来源', 'Resource', 'resource'));
+const locationVal = s(getByCanon(row, '地点 Location', '地点 (Location)', '地点', 'Location', 'location'));
+const addressVal = s(getByCanon(row, '具体位置 Address', '具体位置 (Address)', '具体位置', 'Address', 'address'));
+const operationVal = s(getByCanon(row, '营业时间 Operation Hours', '营业时间 (Opening Hours)', '营业时间', 'Operation Hours', 'Opening Hours', 'operation_hours'));
 
-const relevantImageVal = getByCanon(row,
-'相关柄图 Relevant Image',
-'相关柄图 (Relevant Image)',
-'相关柄图',
-'Relevant Image',
-'relevant_image'
-) || '';
-
-const releaserVal = getByCanon(row,
-'Releaser/Event 发行商',
-'发行商 Releaser',
-'发行商 (Releaser)',
-'发行商',
-'Releaser',
-'releaser'
-) || '';
-
-const releaseDateVal = s( getByCanon(row,
-'发行日期 Release Year/Date',
-'发行日期 Release Date',
-'发行日期 (Release Date)',
-'发行日期',
-'Release Date',
-'release_date'
-) );
-
-const releasePriceVal = s( getByCanon(row,
-'发行价格 Release Price',
-'发行价格 (Release Price)',
-'发行价格',
-'Release Price',
-'release_price'
-) );
-
-const releaseAreaVal = getByCanon(row,
-'发行地区 Release Area',
-'发行地区 (Release Area)',
-'发行地区',
-'Release Area',
-'release_area'
-) || '';
-
-const resourceVal = s( getByCanon(row,
-'信息来源 Resource',
-'信息来源 (Resource)',
-'信息来源',
-'Resource',
-'resource'
-) );
-
-const locationVal = s( getByCanon(row,
-'地点 Location',
-'地点 (Location)',
-'地点',
-'Location',
-'location'
-) );
-
-const addressVal = s( getByCanon(row,
-'具体位置 Address',
-'具体位置 (Address)',
-'具体位置',
-'Address',
-'address'
-) );
-
-const operationVal = s( getByCanon(row,
-'营业时间 Operation Hours',
-'营业时间 (Opening Hours)',
-'营业时间',
-'Operation Hours',
-'Opening Hours',
-'operation_hours'
-) );
-
-// detailed/description merging: prefer detailed, fall back to description
-const rawDetailed = getByCanon(row,
-'详细信息 Detailed Information',
-'详细信息 (Detailed Information)',
-'详细信息',
-'Detailed Information',
-'detailed'
-);
-const rawDescription = getByCanon(row,
-'description',
-'Description'
-);
+const rawDetailed = getByCanon(row, '详细信息 Detailed Information', '详细信息 (Detailed Information)', '详细信息', 'Detailed Information', 'detailed');
+const rawDescription = getByCanon(row, 'description', 'Description');
 const detailedVal = rawDetailed && String(rawDetailed).trim() ? String(rawDetailed).trim() : (rawDescription && String(rawDescription).trim() ? String(rawDescription).trim() : '');
 
 return {
-id: ( imageFile || ('i' + i) ).toString().trim().replace(/^$/, ''),
+id: (imageFile || ('i' + i)).toString().trim().replace(/^$/, ''),
 title: titleVal,
 jp_title: jpTitleVal,
-type: Array.isArray(typeVal) ? typeVal.flatMap(v=>splitTags(v)) : splitTags(typeVal),
-relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v=>splitTags(v)) : splitTags(relevantWorkVal),
-relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v=>splitTags(v)) : splitTags(relevantCharacterVal),
-relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v=>splitTags(v)) : splitTags(relevantImageVal),
-releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v=>splitTags(v)) : splitTags(releaserVal),
+type: Array.isArray(typeVal) ? typeVal.flatMap(v => splitTags(v)) : splitTags(typeVal),
+relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v => splitTags(v)) : splitTags(relevantWorkVal),
+relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v => splitTags(v)) : splitTags(relevantCharacterVal),
+relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v => splitTags(v)) : splitTags(relevantImageVal),
+releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v => splitTags(v)) : splitTags(releaserVal),
 release_date: releaseDateVal,
 release_price: releasePriceVal,
-release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v=>splitTags(v)) : splitTags(releaseAreaVal),
+release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v => splitTags(v)) : splitTags(releaseAreaVal),
 resource: resourceVal,
 location: locationVal,
 address: addressVal,
@@ -257,11 +138,12 @@ __rowIndex: i
 };
 }
 
+// placeholder image (data URI)
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
 '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
 );
 
-// Escaping helpers
+// escaping helpers
 window.escapeHtml = function(s){
 if (!s) return '';
 return String(s).replace(/[&<>"]/g, c => ({ '&':'&','<':'<','>':'>','"':'"' }[c]));
@@ -269,22 +151,33 @@ return String(s).replace(/[&<>"]/g, c => ({ '&':'&','<':'<','>':'>','"':'"' }[c]
 window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'"') : ''; };
 window.imgUrl = function(it){ if (!it || !it.image_filename) return PLACEHOLDER; return IMAGES_FOLDER + it.image_filename; };
 
-// Load CSV and initialize UI (build header map for Option B)
+// Load CSV and initialize UI
 fetch(DATA_FILE).then(r => r.text()).then(txt => {
 if (typeof Papa !== 'undefined') {
 const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
 const parsedRows = parsed.data || [];
 window._originalRows = parsedRows;
 window.CSV_HEADERS = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : Object.keys(parsedRows[0] || {});
-// build header map: normalized -> original header
+// build header map
 window._headerMap = {};
-(window.CSV_HEADERS || []).forEach(h => {
-window._headerMap[normalizeHeaderName(h)] = h;
-});const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
+(window.CSV_HEADERS || []).forEach(h => { window._headerMap[normalizeHeaderName(h)] = h; });const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
 items = normalized; window.items = items; filtered = items.slice();
 if (typeof window.populateFilters === 'function') window.populateFilters();
+if (typeof window.applyFilters === 'function') window.applyFilters();} else {
+window._originalRows = [];
+window.CSV_HEADERS = [];
+window._headerMap = {};
+items = []; filtered = [];
+if (typeof window.populateFilters === 'function') window.populateFilters();
 if (typeof window.applyFilters === 'function') window.applyFilters();
+}
+}).catch(err => {
+console.error('Failed to load data.csv', err);
+const listEl = q('list');
+if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
+});
 
+// populateFilters and renderCheckboxes
 window.populateFilters = function(){
 const types = unique((items||[]).flatMap(i=>i.type || []));
 const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
@@ -297,18 +190,15 @@ selType.innerHTML = '<option value="">All Types</option>';
 types.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; selType.appendChild(o); });
 }
 
-// renderCheckboxes: builds summary + wrapper + tools + list each time so mobile summary persists
 function renderCheckboxes(containerId, tokens){
 const c = q(containerId);
 if(!c) return;
 c.innerHTML = '';// summary header for mobile
 const summary = document.createElement('div');
 summary.className = 'summary';
-const label = document.createElement('span');
-label.className = 'label';
+const label = document.createElement('span'); label.className = 'label';
 label.textContent = c.getAttribute('aria-label') || 'Filter';
-const chev = document.createElement('button');
-chev.type = 'button'; chev.className = 'chev'; chev.setAttribute('aria-expanded','true'); chev.textContent = '▾';
+const chev = document.createElement('button'); chev.type='button'; chev.className='chev'; chev.setAttribute('aria-expanded','true'); chev.textContent='▾';
 summary.appendChild(label); summary.appendChild(chev);
 
 const wrapper = document.createElement('div'); wrapper.className = 'multi-filter-list';
@@ -350,8 +240,8 @@ clearBtn.onclick = ()=>{
 };
 
 function setCollapsed(collapsed){
-  if (collapsed){ c.classList.add('collapsed'); chev.textContent = '▸'; chev.setAttribute('aria-expanded','false'); }
-  else { c.classList.remove('collapsed'); chev.textContent = '▾'; chev.setAttribute('aria-expanded','true'); }
+  if (collapsed){ c.classList.add('collapsed'); chev.textContent='▸'; chev.setAttribute('aria-expanded','false'); }
+  else { c.classList.remove('collapsed'); chev.textContent='▾'; chev.setAttribute('aria-expanded','true'); }
 }
 setCollapsed(true);
 summary.addEventListener('click', ()=> setCollapsed(!c.classList.contains('collapsed')));
@@ -363,6 +253,7 @@ renderCheckboxes('filter-character-container', chars);
 renderCheckboxes('filter-image-container', imgs);
 };
 
+// Remove from wishlist
 window.removeFromWishlist = function(id){
 wishlist.delete(id);
 localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
@@ -370,6 +261,7 @@ window.applyFilters && window.applyFilters();
 if (q('modal') && q('modal').style.display === 'flex') renderWishlistModal();
 };
 
+// applyFilters
 window.applyFilters = function(){
 function checkedTokens(containerId){
 const c = q(containerId);
@@ -429,6 +321,7 @@ page = 1;
 window.renderPage && window.renderPage();
 };
 
+// renderPage
 window.renderPage = function(){
 const start = (page - 1) * PAGE_SIZE;
 const slice = filtered.slice(start, start + PAGE_SIZE);
@@ -448,7 +341,7 @@ if (nextBtn) nextBtn.disabled = (page >= max);
 const pageInfo = q('page-info'); if (pageInfo) pageInfo.textContent =`Page ${page} / ${max} — ${filtered.length} results`;
 };
 
-// Make .multi-filter collapsible on small screens (kept for compatibility)
+// make filters collapsible on small screens
 function makeFiltersCollapsible() {
 if (!window.matchMedia) return;
 const mq = window.matchMedia('(max-width:600px)');
@@ -482,18 +375,16 @@ apply();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', makeFiltersCollapsible); else makeFiltersCollapsible();
 
+// openDetail: show modal with CSV columns (non-empty)
 window.openDetail = async function(id){
 try{
-// ensure we have original rows cached
 const originalRows = await loadOriginalRows();
 if(!window.items || !window.items.length){
 window.items = (originalRows || []).map((row, i) => normalizeRow(row, i));
 items = window.items;
 if(typeof window.populateFilters === 'function') window.populateFilters();
 if(typeof window.applyFilters === 'function') window.applyFilters();
-}
-
-const cleaned = (id || '').toString().trim();
+}const cleaned = (id || '').toString().trim();
 let it = window.items.find(x => (x.id||'').toString().trim() === cleaned);
 if(!it) it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
 if(!it){
@@ -505,15 +396,12 @@ if(!it){
 }
 if(!it){ console.warn('item not found', id); return; }
 
-// find corresponding raw row in originalRows
 const rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
 
-// Build ordered headers (CSV order preferred)
 const headers = Array.isArray(window.CSV_HEADERS) && window.CSV_HEADERS.length
   ? window.CSV_HEADERS.slice()
   : (rawRow ? Object.keys(rawRow) : Object.keys(it));
 
-// helpers
 function humanizeKey(key){
   if(!key) return '';
   const s = key.replace(/[_\-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'\$1 \$2').toLowerCase().trim();
@@ -531,7 +419,6 @@ function looksLikeImageKey(k){
   return /(^|[_\s\-\/])(?:image|img|thumb|poster|cover|src|file|filename|url|photo)(?:$|[_\s\-\/])/i.test(k) || /image|img|thumb|poster|cover|src|file|filename|url|photo/i.test(k);
 }
 
-// collect non-empty rows (prefer rawRow values so newly added CSV columns show)
 const rows = [];
 headers.forEach(key => {
   if (!key) return;
@@ -545,7 +432,6 @@ headers.forEach(key => {
   rows.push({ key, value: val });
 });
 
-// fallback: use normalized properties if nothing found
 if(rows.length === 0){
   Object.keys(it).forEach(key => {
     const raw = it[key];
@@ -556,12 +442,8 @@ if(rows.length === 0){
   });
 }
 
-// Build HTML: NOTE we intentionally DO NOT render the old left-side image
-// nor the normalized it.detailed paragraph — we rely on CSV columns only.
 let html = `<div style="max-width:900px;margin:0 auto">`;
 html += `<h2 style="margin:0 0 .6rem 0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
-
-// render rows as <dl>, letting image-like columns render images if the VALUE looks like a filename/URL
 html += `<dl style="margin:0">`;
 rows.forEach(r => {
   const label = humanizeKey(r.key);
@@ -571,7 +453,6 @@ rows.forEach(r => {
   const valueLooksImage = looksLikeImageFilenameOrUrl(v);
 
   if (keyLooksImage && valueLooksImage) {
-    // Render as image; if filename-only, prefix IMAGES_FOLDER
     let src = v;
     if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
       src = IMAGES_FOLDER + src;
@@ -583,9 +464,7 @@ rows.forEach(r => {
     rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
   }
 
-  // Hide the label when the column is the image filename column (keep the image itself)
   const hideLabel = /^image[_\s-]?filename$/i.test(r.key) || (label && label.toLowerCase() === 'image filename');
-
   if (hideLabel) {
     html += `<dd style="margin:4px 0 0 0">${rendered}</dd>`;
   } else {
@@ -594,11 +473,9 @@ rows.forEach(r => {
 });
 html += `</dl>`;
 
-// wishlist toggle at the bottom
 html += `<div style="margin-top:12px">`;
 html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`;
 html += `</div>`;
-
 html += `</div>`;
 
 if(window.openModal) window.openModal(html); else alert(it.title||it.id);}catch(e){
@@ -606,12 +483,14 @@ console.error('openDetail error', e);
 }
 };
 
+// pagination
 function goPage(delta){
 const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
 page = Math.min(max, Math.max(1, page + delta));
 renderPage();
 }
 
+// detail button delegation
 (function(){
 const listEl = q('list');
 if(!listEl) return;
@@ -627,6 +506,7 @@ if(id) window.openDetail && window.openDetail(id);
 listEl.addEventListener('click', listEl._detailDelegation);
 })();
 
+// modal open/close
 window.openModal = function(html){
 const modal = q('modal'); const content = q('modal-content');
 if (!modal || !content) return;
@@ -636,9 +516,10 @@ window.closeModal = function(){ const modal = q('modal'); if (!modal) return; mo
 const closeBtn = q('close-modal');
 if (closeBtn) closeBtn.addEventListener('click', () => window.closeModal && window.closeModal());
 
+// wishlist toggle
 window.toggleWishlist = function(id, btn){
-// locate button if not provided
-const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);if (wishlist.has(id)){
+const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);
+if (wishlist.has(id)){
 wishlist.delete(id);
 if (selectorBtn){
 selectorBtn.classList.remove('in');
@@ -653,15 +534,11 @@ selectorBtn.classList.add('in');
 selectorBtn.setAttribute('aria-pressed','true');
 selectorBtn.setAttribute('aria-label','Remove from wishlist');
 selectorBtn.setAttribute('title','Remove from wishlist');
-// pop animation
 selectorBtn.classList.add('pop');
 setTimeout(()=>selectorBtn.classList.remove('pop'), 160);
 }
 }
 localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
-// Update any other UI dependent on wishlist state
-// e.g., refresh list labels if you rely on text elsewhere:
-// renderPage();
 };
 
 // CSV export helpers
@@ -709,40 +586,30 @@ alert('Export failed: ' + (err && err.message ? err.message : err));
 const exportBtn = q('export-wishlist');
 if (exportBtn) exportBtn.addEventListener('click', () => exportWishlistCSV());
 
+// search and sort handlers
 let applyTimeout;
 const searchEl = q('search');
 if (searchEl) searchEl.addEventListener('input', () => { clearTimeout(applyTimeout); applyTimeout = setTimeout(() => window.applyFilters && window.applyFilters(), 250); });
 const sortEl = q('sort');
 if (sortEl) {
-// call applyFilters whenever user picks a different sort option
-sortEl.addEventListener('change', () => {
-window.applyFilters && window.applyFilters();
-});
-// optional: respond to keyboard changes immediately in some browsers
-sortEl.addEventListener('input', () => {
-window.applyFilters && window.applyFilters();
-});
+sortEl.addEventListener('change', () => { window.applyFilters && window.applyFilters(); });
+sortEl.addEventListener('input', () => { window.applyFilters && window.applyFilters(); });
 }
+
+// wishlist modal rendering
 function renderWishlistModal(){
 const modal = q('modal');
 const content = q('modal-content');
 if (!modal || !content) return;
-
-// localize modal close button
 const closeBtn = q('close-modal');
 if (closeBtn) closeBtn.textContent = '关闭';
-
-// clear previous
 content.innerHTML = '';
-
 const container = document.createElement('div');
 
-// Title
 const h = document.createElement('h3');
 h.textContent =`心愿单 (${wishlist.size})`;
 container.appendChild(h);
 
-// List items
 if (wishlist.size === 0) {
 const empty = document.createElement('div');
 empty.textContent = '心愿单中空空如也~';
@@ -751,71 +618,39 @@ container.appendChild(empty);
 } else {
 Array.from(wishlist).forEach(id => {
 const it = items.find(x => x.id === id) || { id };
-
 const row = document.createElement('div');
-row.style.display = 'flex';
-row.style.alignItems = 'center';
-row.style.justifyContent = 'space-between';
-row.style.gap = '8px';
-row.style.padding = '8px 0';
-row.style.borderBottom = '1px solid #eee';
+row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.justifyContent = 'space-between';
+row.style.gap = '8px'; row.style.padding = '8px 0'; row.style.borderBottom = '1px solid #eee';const left = document.createElement('div'); left.style.flex = '1';
+  left.textContent = it.title || it.jp_title || it.id;
 
-const left = document.createElement('div');
-left.style.flex = '1';
-left.textContent = it.title || it.jp_title || it.id;
+  const right = document.createElement('div'); right.style.display = 'flex'; right.style.alignItems = 'center';
 
-const right = document.createElement('div');
-right.style.display = 'flex';
-right.style.alignItems = 'center';
+  const detailsBtn = document.createElement('button'); detailsBtn.type = 'button'; detailsBtn.className = 'details-btn';
+  detailsBtn.textContent = '详情'; detailsBtn.style.marginRight = '10px';
+  detailsBtn.addEventListener('click', () => { window.openDetail && window.openDetail(id); });
 
-const detailsBtn = document.createElement('button');
-detailsBtn.type = 'button';
-detailsBtn.className = 'details-btn';
-detailsBtn.textContent = '详情';
-detailsBtn.style.marginRight = '10px'; // spacing between 详情 and 移出
-detailsBtn.addEventListener('click', () => {
-// keep modal open; if you prefer closing first, call window.closeModal()
-window.openDetail && window.openDetail(id);
-});
+  const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'remove-btn';
+  removeBtn.textContent = '移出';
+  removeBtn.addEventListener('click', () => { window.removeFromWishlist && window.removeFromWishlist(id); renderWishlistModal(); });
 
-const removeBtn = document.createElement('button');
-removeBtn.type = 'button';
-removeBtn.className = 'remove-btn';
-removeBtn.textContent = '移出';
-removeBtn.addEventListener('click', () => {
-window.removeFromWishlist && window.removeFromWishlist(id);
-// refresh modal contents
-renderWishlistModal();
-});
-
-right.appendChild(detailsBtn);
-right.appendChild(removeBtn);
-
-row.appendChild(left);
-row.appendChild(right);
-container.appendChild(row);
+  right.appendChild(detailsBtn); right.appendChild(removeBtn);
+  row.appendChild(left); row.appendChild(right);
+  container.appendChild(row);
 });}
 
-// Export button row (Chinese)
-const exportRow = document.createElement('div');
-exportRow.style.marginTop = '12px';
-const exportBtn = document.createElement('button');
-exportBtn.type = 'button';
-exportBtn.id = 'download-wishlist';
-exportBtn.textContent = '导出心愿单';
-exportBtn.addEventListener('click', () => exportWishlistCSV());
-exportRow.appendChild(exportBtn);
+const exportRow = document.createElement('div'); exportRow.style.marginTop = '12px';
+const exportBtn2 = document.createElement('button'); exportBtn2.type = 'button'; exportBtn2.id = 'download-wishlist'; exportBtn2.textContent = '导出心愿单';
+exportBtn2.addEventListener('click', () => exportWishlistCSV());
+exportRow.appendChild(exportBtn2);
 container.appendChild(exportRow);
 
 content.appendChild(container);
-
-// show modal
-modal.style.display = 'flex';
-modal.setAttribute('aria-hidden', 'false');
+modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false');
 }
 
 const openWishlistBtn = q('open-wishlist');
 if (openWishlistBtn) openWishlistBtn.addEventListener('click', renderWishlistModal);
 
-// Cleanup leftover zoom overlay if present (in case older versions injected it)
+// cleanup leftover zoom overlay if present
 const _oldZoom = document.getElementById('zoom-overlay'); if (_oldZoom) _oldZoom.remove();
+

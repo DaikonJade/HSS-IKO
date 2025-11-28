@@ -52,16 +52,31 @@ window.imgUrl = function(it){ if (!it || !it.image_filename) return PLACEHOLDER;
 
 // Load CSV and initialize UI
 fetch(DATA_FILE).then(r => r.text()).then(txt => {
-  const parsedRows = (typeof Papa !== 'undefined') ? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data : [];
-  const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
-  items = normalized; window.items = items; filtered = items.slice();
-  if (typeof window.populateFilters === 'function') window.populateFilters();
-  if (typeof window.applyFilters === 'function') window.applyFilters();
+if (typeof Papa !== 'undefined') {
+const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
+const parsedRows = parsed.data || [];
+// keep the original raw rows and header order for details rendering / CSV export
+window._originalRows = parsedRows;
+window.CSV_HEADERS = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : Object.keys(parsedRows[0] || {});
+const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
+items = normalized; window.items = items; filtered = items.slice();
+if (typeof window.populateFilters === 'function') window.populateFilters();
+if (typeof window.applyFilters === 'function') window.applyFilters();
+} else {
+// fallback: parse manually (empty)
+const parsedRows = [];
+window._originalRows = parsedRows;
+window.CSV_HEADERS = [];
+items = []; filtered = [];
+if (typeof window.populateFilters === 'function') window.populateFilters();
+if (typeof window.applyFilters === 'function') window.applyFilters();
+}
 }).catch(err => {
-  console.error('Failed to load data.csv', err);
-  const listEl = q('list');
-  if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
+console.error('Failed to load data.csv', err);
+const listEl = q('list');
+if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
 });
+
 
 window.populateFilters = function(){
   const types = unique((items||[]).flatMap(i=>i.type || []));
@@ -265,47 +280,123 @@ function makeFiltersCollapsible() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', makeFiltersCollapsible); else makeFiltersCollapsible();
 
 window.openDetail = async function(id){
-  try{
-    if(!window.items || !window.items.length){
-      const txt = await fetch('data.csv?_=' + Date.now()).then(r=>r.text());
-      const parsed = (typeof Papa !== 'undefined') ? Papa.parse(txt.trim(), {header:true, skipEmptyLines:true}).data : [];
-      window.items = parsed.map((row, i) => normalizeRow(row, i));
-      items = window.items;
-      if(typeof window.populateFilters === 'function') window.populateFilters();
-      if(typeof window.applyFilters === 'function') window.applyFilters();
-    }
-
-    const cleaned = (id || '').toString().trim();
-    let it = window.items.find(x => (x.id||'').toString().trim() === cleaned);
-    if(!it) it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
-    if(!it){ console.warn('item not found', id); return; }
-
-    const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
-    const detailsLines = [];
-    if (it.type && it.type.length) detailsLines.push(`<div><strong>类型：</strong>${window.escapeHtml(it.type.join(', '))}</div>`);
-    if (it.relevant_work && it.relevant_work.length) detailsLines.push(`<div><strong>相关作品：</strong>${window.escapeHtml(it.relevant_work.join(', '))}</div>`);
-    if (it.relevant_character && it.relevant_character.length) detailsLines.push(`<div><strong>相关人物：</strong>${window.escapeHtml(it.relevant_character.join(', '))}</div>`);
-    if (it.releaser && it.releaser.length) detailsLines.push(`<div><strong>发行商：</strong>${window.escapeHtml(it.releaser.join(', '))}</div>`);
-    if (it.release_date) detailsLines.push(`<div><strong>发行日期：</strong>${window.escapeHtml(it.release_date)}</div>`);
-    if (it.release_price) detailsLines.push(`<div><strong>发行价格：</strong>${window.escapeHtml(it.release_price)}</div>`);
-    if (it.release_area && it.release_area.length) detailsLines.push(`<div><strong>发行地区：</strong>${window.escapeHtml(it.release_area.join(', '))}</div>`);
-    const detailsHtml = detailsLines.join('');
-
-    const html = `
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        <img src="${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px" alt="">
-        <div style="flex:1;min-width:220px">
-          <h2 style="margin:0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>
-          ${detailsHtml}
-          <p style="margin-top:12px">${window.escapeHtml(it.detailed||it.description||'')}</p>
-          <div style="margin-top:10px">${it.resource ? `来源: <a href="${window.escapeAttr(it.resource)}" target="_blank">${window.escapeHtml(it.resource)}</a>` : ''}</div>
-          <div style="margin-top:12px"> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/> </svg> </button> </div>
-        </div>
-      </div>`;
-    if(window.openModal) window.openModal(html); else alert(it.title||it.id);
-  }catch(e){
-    console.error('openDetail error', e);
+try{
+// ensure we have original rows cached
+const originalRows = await loadOriginalRows();
+// ensure normalized items exist too (loadOriginalRows may not normalize)
+if(!window.items || !window.items.length){
+window.items = (originalRows || []).map((row, i) => normalizeRow(row, i));
+items = window.items;
+if(typeof window.populateFilters === 'function') window.populateFilters();
+if(typeof window.applyFilters === 'function') window.applyFilters();
+}const cleaned = (id || '').toString().trim();
+let it = window.items.find(x => (x.id||'').toString().trim() === cleaned);
+if(!it) it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
+if(!it){
+  // try to find from raw rows too
+  const rawFound = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === cleaned);
+  if(rawFound) {
+    // normalize and set it
+    const idx = (originalRows || []).indexOf(rawFound);
+    it = normalizeRow(rawFound, idx);
   }
+}
+if(!it){ console.warn('item not found', id); return; }
+
+// find corresponding raw row in originalRows
+const rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
+
+// build ordered headers to iterate
+const headers = Array.isArray(window.CSV_HEADERS) && window.CSV_HEADERS.length
+  ? window.CSV_HEADERS.slice()
+  : (rawRow ? Object.keys(rawRow) : Object.keys(it));
+
+// helper inline functions (use existing escape helpers)
+function humanizeKey(key){
+  if(!key) return '';
+  const s = key.replace(/[_\-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'\$1 \$2').toLowerCase().trim();
+  return s.split(' ').map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+}
+function isUrlLike(v){ return v && /^(https?:)?\/\//i.test(String(v)); }
+function looksLikeImageKey(k){ return /image|img|thumb|poster|cover|src|file|filename|url/i.test(k); }
+
+// collect rows to show (skip blank/empty)
+const rows = [];
+headers.forEach(key => {
+  if (!key) return;
+  // prefer rawRow value if present, else fallback to normalized item property
+  let val = rawRow && rawRow.hasOwnProperty(key) ? rawRow[key] : (it.hasOwnProperty(key) ? it[key] : undefined);
+  if (val === undefined || val === null) return;
+  // if it's an array (Papa parse may keep array if field repeated), join
+  if (Array.isArray(val)) val = val.join(', ');
+  val = String(val);
+  if (!val.trim()) return;
+  rows.push({ key, value: val });
+});
+
+// fallback: if nothing from headers, use normalized properties
+if(rows.length === 0){
+  Object.keys(it).forEach(key => {
+    const raw = it[key];
+    if (raw === undefined || raw === null) return;
+    const v = Array.isArray(raw) ? raw.join(', ') : String(raw);
+    if (!v.trim()) return;
+    rows.push({ key, value: v });
+  });
+}
+
+// Build HTML for details view
+const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
+let html = `<div style="display:flex;gap:12px;flex-wrap:wrap">`;
+html += `<img src="${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px" alt="">`;
+html += `<div style="flex:1;min-width:220px">`;
+html += `<h2 style="margin:0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
+
+// render rows as <dl>
+html += `<dl style="margin-top:8px">`;
+rows.forEach(r => {
+  const label = humanizeKey(r.key);
+  const v = r.value;
+  let rendered = '';
+  // Image/file handling: if CSV header appears image-like, or value looks like image URL/filename
+  const isImageKey = looksLikeImageKey(r.key) || r.key.toLowerCase() === 'image_filename';
+  if (isImageKey) {
+    let src = v.trim();
+    // if looks like just filename, prepend images folder
+    if (!isUrlLike(src) && !src.startsWith('data:')) {
+      src = IMAGES_FOLDER + src;
+    }
+    rendered = `<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
+  } else if (isUrlLike(v)) {
+    rendered = `<a href="${window.escapeAttr(v)}" target="_blank" rel="noopener noreferrer">${window.escapeHtml(v)}</a>`;
+  } else {
+    rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
+  }
+  html += `<dt style="font-weight:600;margin-top:12px">${window.escapeHtml(label)}</dt><dd style="margin:4px 0 0 0">${rendered}</dd>`;
+});
+html += `</dl>`;
+
+// description / detailed info (prefer normalized detailed/description fields)
+if (it.detailed || it.description) {
+  html += `<p style="margin-top:12px">${window.escapeHtml(it.detailed || it.description || '')}</p>`;
+}
+
+// source/resource link if present (prefer raw or normalized)
+const resourceVal = rawRow && rawRow['信息来源 Resource'] ? rawRow['信息来源 Resource'] : (it.resource || '');
+if (resourceVal) {
+  const href = resourceVal.trim();
+  const linkHtml = isUrlLike(href) ? `<a href="${window.escapeAttr(href)}" target="_blank">${window.escapeHtml(href)}</a>` : window.escapeHtml(href);
+  html += `<div style="margin-top:10px">来源: ${linkHtml}</div>`;
+}
+
+// wishlist toggle in details
+html += `<div style="margin-top:12px"> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/> </svg> </button> </div>`;
+
+html += `</div></div>`;
+
+if(window.openModal) window.openModal(html); else alert(it.title||it.id);}catch(e){
+console.error('openDetail error', e);
+}
 };
 
 function goPage(delta){

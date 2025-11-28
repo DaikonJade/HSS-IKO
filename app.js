@@ -283,7 +283,6 @@ window.openDetail = async function(id){
 try{
 // ensure we have original rows cached
 const originalRows = await loadOriginalRows();
-// ensure normalized items exist too (loadOriginalRows may not normalize)
 if(!window.items || !window.items.length){
 window.items = (originalRows || []).map((row, i) => normalizeRow(row, i));
 items = window.items;
@@ -293,10 +292,8 @@ if(typeof window.applyFilters === 'function') window.applyFilters();
 let it = window.items.find(x => (x.id||'').toString().trim() === cleaned);
 if(!it) it = window.items.find(x => (x.id||'').toString().includes(cleaned) || cleaned.includes((x.id||'').toString()));
 if(!it){
-  // try to find from raw rows too
   const rawFound = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === cleaned);
   if(rawFound) {
-    // normalize and set it
     const idx = (originalRows || []).indexOf(rawFound);
     it = normalizeRow(rawFound, idx);
   }
@@ -306,35 +303,44 @@ if(!it){ console.warn('item not found', id); return; }
 // find corresponding raw row in originalRows
 const rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
 
-// build ordered headers to iterate
+// Build ordered headers (CSV order preferred)
 const headers = Array.isArray(window.CSV_HEADERS) && window.CSV_HEADERS.length
   ? window.CSV_HEADERS.slice()
   : (rawRow ? Object.keys(rawRow) : Object.keys(it));
 
-// helper inline functions (use existing escape helpers)
+// helpers
 function humanizeKey(key){
   if(!key) return '';
   const s = key.replace(/[_\-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'\$1 \$2').toLowerCase().trim();
   return s.split(' ').map(p=>p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
 }
 function isUrlLike(v){ return v && /^(https?:)?\/\//i.test(String(v)); }
-function looksLikeImageKey(k){ return /image|img|thumb|poster|cover|src|file|filename|url/i.test(k); }
+function looksLikeImageFilenameOrUrl(v){
+  if(!v) return false;
+  const s = String(v).trim();
+  if (s.startsWith('data:')) return true;
+  if (/^(https?:)?\/\//i.test(s) && /\.(jpe?g|png|gif|webp|avif|svg)(?:[\?#].*)?$/i.test(s)) return true;
+  return /\.(jpe?g|png|gif|webp|avif|svg)(?:[\?#].*)?$/i.test(s);
+}
+function looksLikeImageKey(k){
+  return /(^|[_\s\-\/])(?:image|img|thumb|poster|cover|src|file|filename|url|photo)(?:$|[_\s\-\/])/i.test(k) || /image|img|thumb|poster|cover|src|file|filename|url|photo/i.test(k);
+}
 
-// collect rows to show (skip blank/empty)
+// collect non-empty rows (prefer rawRow values so newly added CSV columns show)
 const rows = [];
 headers.forEach(key => {
   if (!key) return;
-  // prefer rawRow value if present, else fallback to normalized item property
-  let val = rawRow && rawRow.hasOwnProperty(key) ? rawRow[key] : (it.hasOwnProperty(key) ? it[key] : undefined);
-  if (val === undefined || val === null) return;
-  // if it's an array (Papa parse may keep array if field repeated), join
+  let val;
+  if (rawRow && rawRow.hasOwnProperty(key)) val = rawRow[key];
+  else if (it && it.hasOwnProperty(key)) val = it[key];
+  else return;
   if (Array.isArray(val)) val = val.join(', ');
-  val = String(val);
+  val = val == null ? '' : String(val);
   if (!val.trim()) return;
   rows.push({ key, value: val });
 });
 
-// fallback: if nothing from headers, use normalized properties
+// fallback: use normalized properties if nothing found
 if(rows.length === 0){
   Object.keys(it).forEach(key => {
     const raw = it[key];
@@ -345,25 +351,23 @@ if(rows.length === 0){
   });
 }
 
-// Build HTML for details view
-const img = (window.imgUrl ? window.imgUrl(it) : '') || '';
-let html = `<div style="display:flex;gap:12px;flex-wrap:wrap">`;
-html += `<img src="${window.escapeAttr(img)}" style="max-width:320px;width:100%;border-radius:6px" alt="">`;
-html += `<div style="flex:1;min-width:220px">`;
-html += `<h2 style="margin:0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
+// Build HTML: NOTE we intentionally DO NOT render the old left-side image
+// nor the normalized it.detailed paragraph — we rely on CSV columns only.
+let html = `<div style="max-width:900px;margin:0 auto">`;
+html += `<h2 style="margin:0 0 .6rem 0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
 
-// render rows as <dl>
-html += `<dl style="margin-top:8px">`;
+// render rows as <dl>, letting image-like columns render images if the VALUE looks like a filename/URL
+html += `<dl style="margin:0">`;
 rows.forEach(r => {
   const label = humanizeKey(r.key);
-  const v = r.value;
+  const v = r.value.trim();
   let rendered = '';
-  // Image/file handling: if CSV header appears image-like, or value looks like image URL/filename
-  const isImageKey = looksLikeImageKey(r.key) || r.key.toLowerCase() === 'image_filename';
-  if (isImageKey) {
-    let src = v.trim();
-    // if looks like just filename, prepend images folder
-    if (!isUrlLike(src) && !src.startsWith('data:')) {
+  const keyLooksImage = looksLikeImageKey(r.key);
+  const valueLooksImage = looksLikeImageFilenameOrUrl(v);
+  if (keyLooksImage && valueLooksImage) {
+    // render as image; if filename-only, prefix IMAGES_FOLDER
+    let src = v;
+    if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
       src = IMAGES_FOLDER + src;
     }
     rendered = `<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
@@ -376,23 +380,12 @@ rows.forEach(r => {
 });
 html += `</dl>`;
 
-// description / detailed info (prefer normalized detailed/description fields)
-if (it.detailed || it.description) {
-  html += `<p style="margin-top:12px">${window.escapeHtml(it.detailed || it.description || '')}</p>`;
-}
+// wishlist toggle at the bottom
+html += `<div style="margin-top:12px">`;
+html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`;
+html += `</div>`;
 
-// source/resource link if present (prefer raw or normalized)
-const resourceVal = rawRow && rawRow['信息来源 Resource'] ? rawRow['信息来源 Resource'] : (it.resource || '');
-if (resourceVal) {
-  const href = resourceVal.trim();
-  const linkHtml = isUrlLike(href) ? `<a href="${window.escapeAttr(href)}" target="_blank">${window.escapeHtml(href)}</a>` : window.escapeHtml(href);
-  html += `<div style="margin-top:10px">来源: ${linkHtml}</div>`;
-}
-
-// wishlist toggle in details
-html += `<div style="margin-top:12px"> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/> </svg> </button> </div>`;
-
-html += `</div></div>`;
+html += `</div>`;
 
 if(window.openModal) window.openModal(html); else alert(it.title||it.id);}catch(e){
 console.error('openDetail error', e);

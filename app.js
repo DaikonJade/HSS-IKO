@@ -58,7 +58,11 @@ const parsedRows = parsed.data || [];
 // keep the original raw rows and header order for details rendering / CSV export
 window._originalRows = parsedRows;
 window.CSV_HEADERS = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : Object.keys(parsedRows[0] || {});
-const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
+const normalized = parsedRows.map((row, i) => {
+const n = normalizeRow(row, i);
+n.__rowIndex = i; // record CSV row order (0-based): higher -> newer
+return n;
+});
 items = normalized; window.items = items; filtered = items.slice();
 if (typeof window.populateFilters === 'function') window.populateFilters();
 if (typeof window.applyFilters === 'function') window.applyFilters();
@@ -208,11 +212,27 @@ window.applyFilters = function(){
   });
 
   const sort = q('sort') ? q('sort').value : 'title';
-  filtered.sort((a,b)=>{
-    const va = (a[sort]||'').toString(); const vb = (b[sort]||'').toString();
-    if(sort==='release_date'){ const da = Date.parse(va)||0; const db = Date.parse(vb)||0; return db - da; }
-    return va.localeCompare(vb);
-  });
+  filtered.sort((a, b) => {
+const sort = q('sort') ? q('sort').value : 'title';
+
+if (sort === 'added' || sort === 'newly_added') {
+// sort newest first (larger __rowIndex = newer row)
+const ai = (a && a.__rowIndex != null) ? a.__rowIndex : 0;
+const bi = (b && b.__rowIndex != null) ? b.__rowIndex : 0;
+return bi - ai;
+}
+
+const va = (a && a[sort]) ? String(a[sort]) : '';
+const vb = (b && b[sort]) ? String(b[sort]) : '';
+
+if (sort === 'release_date') {
+const da = Date.parse(va) || 0;
+const db = Date.parse(vb) || 0;
+return db - da;
+}
+
+return va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
+});
 
   page = 1;
   window.renderPage && window.renderPage();

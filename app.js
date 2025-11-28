@@ -31,35 +31,45 @@ window._headerMap = window._headerMap || {};
 // get value by canonical name or a list of candidate names
 // usage: getByCanon(row, 'release date', '发行日期', 'Release Year/Date')
 function getByCanon(row, ...candidates){
-if(!row) return undefined;
-// try candidates first (direct keys)
-for(const c of candidates){
-if(c == null) continue;
-if(Object.prototype.hasOwnProperty.call(row, c)) return row[c];
+if (!row) return undefined;
+
+// 1) direct exact key lookup (useful when candidate is the full header)
+for (const c of candidates) {
+if (c == null) continue;
+if (Object.prototype.hasOwnProperty.call(row, c)) return row[c];
 }
-// try header map if available
-for(const c of candidates){
-if(!c) continue;
-const key = window._headerMap && window._headerMap[normalizeHeaderName(c)];
-if(key && Object.prototype.hasOwnProperty.call(row, key)) return row[key];
+
+// 2) try header map (exact normalized match)
+for (const c of candidates) {
+if (!c) continue;
+const norm = normalizeHeaderName(c);
+const mapped = window._headerMap && window._headerMap[norm];
+if (mapped && Object.prototype.hasOwnProperty.call(row, mapped)) return row[mapped];
 }
-// try normalized-name match against row keys
-const normCandidates = candidates.map(c => normalizeHeaderName(c));
-for(const rk of Object.keys(row||{})){
+
+// 3) tolerant normalized matching:
+//    if a normalized candidate is contained in a normalized header key (or vice-versa),
+//    treat that as a match.
+const normCandidates = candidates.map(c => normalizeHeaderName(c)).filter(Boolean);
+for (const rk of Object.keys(row || {})) {
 const nk = normalizeHeaderName(rk);
-if(normCandidates.includes(nk)) return row[rk];
-}
-// fallback: try to match single canonical name if provided
-if(candidates.length === 1){
-const singleNorm = normalizeHeaderName(candidates[0]);
-for(const rk of Object.keys(row||{})){
-if(normalizeHeaderName(rk) === singleNorm) return row[rk];
+for (const nc of normCandidates) {
+if (!nc) continue;
+if (nk === nc || nk.includes(nc) || nc.includes(nk)) {
+return row[rk];
 }
 }
+}
+
+// 4) fallback: try returning any direct candidate key if somehow present
+for (const c of candidates) {
+if (c == null) continue;
+if (row[c] !== undefined) return row[c];
+}
+
 return undefined;
 }
 
-// normalizeRow uses getByCanon to be robust to header renames
 function normalizeRow(row, i){
 // helper to coerce to string safely
 function s(v){ return v == null ? '' : String(v).trim(); }

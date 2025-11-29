@@ -162,6 +162,67 @@ window.populateFilters = function(){
   renderCheckboxes('filter-character-container', chars);
   renderCheckboxes('filter-image-container', imgs);
 };
+(function(){
+// update badge inside a .multi-filter .summary to show number of checked options
+function updateFilterBadge(container) {
+const c = (typeof container === 'string') ? q(container) : container;
+if (!c) return;
+const summary = c.querySelector('.summary');
+if (!summary) return;
+let badge = summary.querySelector('.filter-badge');
+if (!badge) {
+badge = document.createElement('span');
+badge.className = 'filter-badge';
+const chev = summary.querySelector('.chev');
+if (chev) summary.insertBefore(badge, chev);
+else summary.appendChild(badge);
+}
+const count = c.querySelectorAll('input[type="checkbox"]:checked').length;
+badge.textContent = count > 0 ? String(count) : '';
+badge.style.display = count > 0 ? 'inline-block' : 'none';
+}
+
+// attach listeners for all filters (idempotent)
+function attachFilterBadges() {
+document.querySelectorAll('.multi-filter').forEach(c => {
+// initialize badge immediately
+updateFilterBadge(c);
+// add change listeners once
+if (c._badgeInit) return;
+c.querySelectorAll('input[type="checkbox"]').forEach(ch => {
+ch.addEventListener('change', () => updateFilterBadge(c));
+});
+c._badgeInit = true;
+});
+}
+
+// Clear all filters and update badges + apply filters
+function clearAllFilters() {
+document.querySelectorAll('.multi-filter input[type="checkbox"]').forEach(ch => { ch.checked = false; });
+document.querySelectorAll('.multi-filter').forEach(c => updateFilterBadge(c));
+if (typeof window.applyFilters === 'function') window.applyFilters();
+}
+
+// wire the global button (if present)
+const clearAllBtn = q('clear-all-filters');
+if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllFilters);
+
+// initial attach (in case filters already present)
+attachFilterBadges();
+
+// watch for dynamic changes (populateFilters may rebuild .multi-filter contents)
+// debounce to avoid thrashing
+let _badgeDeb;
+const obs = new MutationObserver(() => {
+clearTimeout(_badgeDeb);
+_badgeDeb = setTimeout(() => attachFilterBadges(), 120);
+});
+obs.observe(document.body, { childList: true, subtree: true });
+
+// Expose helpers for debugging (optional)
+window._attachFilterBadges = attachFilterBadges;
+window._clearAllFilters = clearAllFilters;
+})();
 
 window.removeFromWishlist = function(id){
   wishlist.delete(id);

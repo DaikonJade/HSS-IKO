@@ -1,5 +1,4 @@
-/* app.js — full corrected version (Option B header mapping + UI) */
-
+// app.js
 const DATA_FILE = 'data.csv';
 const IMAGES_FOLDER = 'images/';
 const PAGE_SIZE = 24;
@@ -11,160 +10,44 @@ let wishlist = new Set(JSON.parse(localStorage.getItem('wanted') || '[]'));
 
 // Helpers
 function q(id){ return document.getElementById(id); }
-function unique(values){ return [...new Set((values || []).filter(v => v && v.toString().trim()))].sort(); }
+function unique(values){ return [...new Set(values.filter(v => v && v.toString().trim()))].sort(); }
 function isBlank(s){ return s === undefined || s === null || String(s).trim() === ''; }
 
 function splitTags(s){
-if (!s) return [];
-return String(s).split(/[,，;；/|]+/).map(t => t.trim()).filter(Boolean);
-}// --- Header mapping helpers (Option B) ---
-function normalizeHeaderName(h){
-return (h||'').toString().trim().toLowerCase()
-.replace(/[_-\s/]+/g,' ')
-.replace(/[^a-z0-9\u4e00-\u9fff ]/gi,'')
-.trim();
-}
-window._headerMap = window._headerMap || {};
-
-// Scored header matcher: getByCanon(row, 'Release Date', '发行日期', ...)
-function getByCanon(row, ...candidates){
-if (!row) return undefined;
-const headerKeys = Object.keys(row || {});
-if (!headerKeys.length) return undefined;
-const norm = s => normalizeHeaderName(String(s || ''));
-const normHeaders = headerKeys.map(h => ({ orig: h, norm: norm(h) }));
-const normCandidates = candidates.map(c => ({ orig: c, norm: norm(c) })).filter(c => c.norm);
-
-// 1) direct exact key
-for (const c of candidates) {
-if (c == null) continue;
-if (Object.prototype.hasOwnProperty.call(row, c)) return row[c];
+  if (!s) return [];
+  return String(s).split(/[,，;；\/|]+/).map(t => t.trim()).filter(Boolean);
 }
 
-// 2) header map match
-for (const c of normCandidates) {
-const mapped = window._headerMap && window._headerMap[c.norm];
-if (mapped && Object.prototype.hasOwnProperty.call(row, mapped)) return row[mapped];
-}
-
-// 3) scoring match
-function scoreMatch(hn, cn){
-if (!hn || !cn) return 0;
-if (hn === cn) return 100;
-if (hn.includes(cn)) return 80;
-if (cn.includes(hn)) return 60;
-const hTokens = hn.split(' ').filter(Boolean);
-const cTokens = cn.split(' ').filter(Boolean);
-if (cTokens.length && cTokens.every(t => hTokens.includes(t))) return 40;
-const overlap = cTokens.filter(t => hTokens.includes(t)).length;
-if (overlap > 0) return 10 + overlap;
-return 0;
-}
-
-let best = { score: 0, header: null };
-for (const h of normHeaders){
-for (const c of normCandidates){
-const s = scoreMatch(h.norm, c.norm);
-if (s > best.score){
-best.score = s;
-best.header = h.orig;
-}
-if (best.score >= 100) break;
-}
-if (best.score >= 100) break;
-}
-if (best.header) return row[best.header];
-
-// 4) fallback direct key or first header
-for (const c of candidates){
-if (c == null) continue;
-if (row[c] !== undefined) return row[c];
-}
-for (const h of headerKeys){
-if (row[h] !== undefined) return row[h];
-}
-return undefined;
-}
-
-// normalizeRow uses getByCanon for robust header lookups
 function normalizeRow(row, i){
-function s(v){ return v == null ? '' : String(v).trim(); }
-
-// prefer raw CSV headers using full header strings + safe variants
-const imageFile = s(getByCanon(row, 'image_filename', 'image filename', 'Image Filename', 'image file'));
-
-// Prefer Chinese title when present; fall back to Japanese
-const rawChinese = getByCanon(row,
-'中文名字 Chinese Name',
-'中文名字 (Chinese Name)',
-'中文名字',
-'Chinese Name',
-'title'
-);
-const rawJapanese = getByCanon(row,
-'日文名字 Japanese Name',
-'日文名字 (Japanese Name)',
-'日文名字',
-'Japanese Name',
-'jp_title'
-);
-const titleVal = s(rawChinese || rawJapanese || '');
-const jpTitleVal = s(rawJapanese || rawChinese || '');
-
-const typeVal = getByCanon(row, '类型 Type', '类型 (Type)', '类型', 'Type', 'type') || '';
-const relevantWorkVal = getByCanon(row, '相关作品 Relevant Work', '相关作品 (Relevant Work)', '相关作品', 'Relevant Work', 'relevant_work') || '';
-const relevantCharacterVal = getByCanon(row, '相关人物 Relevant Character', '相关人物 (Relevant Character)', '相关人物', 'Relevant Character', 'relevant_character') || '';
-const relevantImageVal = getByCanon(row, '相关柄图 Relevant Image', '相关柄图 (Relevant Image)', '相关柄图', 'Relevant Image', 'relevant_image') || '';
-
-const releaserVal = getByCanon(row, 'Releaser/Event 发行商', '发行商 Releaser', '发行商 (Releaser)', '发行商', 'Releaser', 'releaser') || '';
-
-const releaseDateVal = s(getByCanon(row, '发行日期 Release Year/Date', '发行日期 Release Date', '发行日期 (Release Date)', '发行日期', 'Release Date', 'release_date'));
-const releasePriceVal = s(getByCanon(row, '发行价格 Release Price', '发行价格 (Release Price)', '发行价格', 'Release Price', 'release_price'));
-const releaseAreaVal = getByCanon(row, '发行地区 Release Area', '发行地区 (Release Area)', '发行地区', 'Release Area', 'release_area') || '';
-
-const resourceVal = s(getByCanon(row, '信息来源 Resource', '信息来源 (Resource)', '信息来源', 'Resource', 'resource'));
-const locationVal = s(getByCanon(row, '地点 Location', '地点 (Location)', '地点', 'Location', 'location'));
-const addressVal = s(getByCanon(row, '具体位置 Address', '具体位置 (Address)', '具体位置', 'Address', 'address'));
-const operationVal = s(getByCanon(row, '营业时间 Operation Hours', '营业时间 (Opening Hours)', '营业时间', 'Operation Hours', 'Opening Hours', 'operation_hours'));
-
-const rawDetailed = getByCanon(row, '详细信息 Detailed Information', '详细信息 (Detailed Information)', '详细信息', 'Detailed Information', 'detailed');
-const rawDescription = getByCanon(row, 'description', 'Description');
-const detailedVal = rawDetailed && String(rawDetailed).trim() ? String(rawDetailed).trim() : (rawDescription && String(rawDescription).trim() ? String(rawDescription).trim() : '');
-
-return {
-id: (imageFile || ('i' + i)).toString().trim().replace(/^$/, ''),
-title: titleVal,
-jp_title: jpTitleVal,
-type: Array.isArray(typeVal) ? typeVal.flatMap(v => splitTags(v)) : splitTags(typeVal),
-relevant_work: Array.isArray(relevantWorkVal) ? relevantWorkVal.flatMap(v => splitTags(v)) : splitTags(relevantWorkVal),
-relevant_character: Array.isArray(relevantCharacterVal) ? relevantCharacterVal.flatMap(v => splitTags(v)) : splitTags(relevantCharacterVal),
-relevant_image: Array.isArray(relevantImageVal) ? relevantImageVal.flatMap(v => splitTags(v)) : splitTags(relevantImageVal),
-releaser: Array.isArray(releaserVal) ? releaserVal.flatMap(v => splitTags(v)) : splitTags(releaserVal),
-release_date: releaseDateVal,
-release_price: releasePriceVal,
-release_area: Array.isArray(releaseAreaVal) ? releaseAreaVal.flatMap(v => splitTags(v)) : splitTags(releaseAreaVal),
-resource: resourceVal,
-location: locationVal,
-address: addressVal,
-operation_hours: operationVal,
-detailed: detailedVal,
-description: detailedVal,
-image_filename: imageFile,
-__rowIndex: i
-};
+  return {
+    id: ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^\$/, ''),
+    title: (row['中文名字 Chinese Name'] || row['中文名字'] || row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+    jp_title: (row['日文名字 Japanese Name'] || row['日文名字'] || '').toString().trim(),
+    type: splitTags(row['类型 Type'] || row['类型'] || row.type),
+    relevant_work: splitTags(row['相关作品 Relevant Work'] || row['相关作品'] || row.relevant_work),
+    relevant_character: splitTags(row['相关人物 Relevant Character'] || row['相关人物'] || row.relevant_character),
+    relevant_image: splitTags(row['相关柄图 Relevant Image'] || row['相关柄图'] || row.relevant_image),
+    releaser: splitTags(row['Releaser/Event 发行商'] || row['发行商'] || row.relevant_event),
+    release_date: (row['发行日期 Release Year/Date'] || row['发行日期'] || '').toString().trim(),
+    release_price: (row['发行价格 Release Price (JPY)'] || row['发行价格'] || '').toString().trim(),
+    release_area: splitTags(row['发行地区 Release Area'] || row['发行地区'] || row.relevant_area),
+    resource: (row['信息来源 Resource'] || row['信息来源'] || '').toString().trim(),
+    detailed: (row['详细信息 Detailed Information'] || row['详细信息'] || '').toString().trim(),
+    description: (row['详细信息 Detailed Information'] || row['description'] || '').toString().trim(),
+    image_filename: (row['image_filename'] || row.image_filename || '').toString().trim()
+  };
 }
 
-// placeholder image (data URI)
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-'<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="#eee"/><text x="50%" y="50%" font-size="20" text-anchor="middle" fill="#999" dy=".3em">No image</text></svg>'
 );
 
-// escaping helpers
+// Escaping helpers
 window.escapeHtml = function(s){
-if (!s) return '';
-return String(s).replace(/[&<>"]/g, c => ({ '&':'&','<':'<','>':'>','"':'"' }[c]));
+  if (!s) return '';
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 };
-window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'"') : ''; };
+window.escapeAttr = function(s){ return s ? String(s).replace(/"/g,'&quot;') : ''; };
 window.imgUrl = function(it){ if (!it || !it.image_filename) return PLACEHOLDER; return IMAGES_FOLDER + it.image_filename; };
 
 // Load CSV and initialize UI
@@ -172,17 +55,22 @@ fetch(DATA_FILE).then(r => r.text()).then(txt => {
 if (typeof Papa !== 'undefined') {
 const parsed = Papa.parse(txt.trim(), { header: true, skipEmptyLines: true });
 const parsedRows = parsed.data || [];
+// keep the original raw rows and header order for details rendering / CSV export
 window._originalRows = parsedRows;
 window.CSV_HEADERS = (parsed.meta && parsed.meta.fields) ? parsed.meta.fields.slice() : Object.keys(parsedRows[0] || {});
-// build header map
-window._headerMap = {};
-(window.CSV_HEADERS || []).forEach(h => { window._headerMap[normalizeHeaderName(h)] = h; });const normalized = parsedRows.map((row, i) => normalizeRow(row, i));
+const normalized = parsedRows.map((row, i) => {
+const n = normalizeRow(row, i);
+n.__rowIndex = i; // record CSV row order (0-based): higher -> newer
+return n;
+});
 items = normalized; window.items = items; filtered = items.slice();
 if (typeof window.populateFilters === 'function') window.populateFilters();
-if (typeof window.applyFilters === 'function') window.applyFilters();} else {
-window._originalRows = [];
+if (typeof window.applyFilters === 'function') window.applyFilters();
+} else {
+// fallback: parse manually (empty)
+const parsedRows = [];
+window._originalRows = parsedRows;
 window.CSV_HEADERS = [];
-window._headerMap = {};
 items = []; filtered = [];
 if (typeof window.populateFilters === 'function') window.populateFilters();
 if (typeof window.applyFilters === 'function') window.applyFilters();
@@ -193,207 +81,227 @@ const listEl = q('list');
 if (listEl) listEl.innerHTML = '<p style="color:#b00">Could not load data.csv — upload it to the repo root.</p>';
 });
 
-// populateFilters and renderCheckboxes
+
 window.populateFilters = function(){
-const types = unique((items||[]).flatMap(i=>i.type || []));
-const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
-const chars = unique((items||[]).flatMap(i=>i.relevant_character || []));
-const imgs = unique((items||[]).flatMap(i=>i.relevant_image || []));
+  const types = unique((items||[]).flatMap(i=>i.type || []));
+  const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
+  const chars = unique((items||[]).flatMap(i=>i.relevant_character || []));
+  const imgs = unique((items||[]).flatMap(i=>i.relevant_image || []));
 
-const selType = q('filter-type');
-if(selType){
-selType.innerHTML = '<option value="">All Types</option>';
-types.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; selType.appendChild(o); });
-}
+  const selType = q('filter-type');
+  if(selType){
+    selType.innerHTML = '<option value="">All Types</option>';
+    types.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; selType.appendChild(o); });
+  }
 
-function renderCheckboxes(containerId, tokens){
-const c = q(containerId);
-if(!c) return;
-c.innerHTML = '';// summary header for mobile
-const summary = document.createElement('div');
-summary.className = 'summary';
-const label = document.createElement('span'); label.className = 'label';
-label.textContent = c.getAttribute('aria-label') || 'Filter';
-const chev = document.createElement('button'); chev.type='button'; chev.className='chev'; chev.setAttribute('aria-expanded','true'); chev.textContent='▾';
-summary.appendChild(label); summary.appendChild(chev);
+  // renderCheckboxes: builds summary + wrapper + tools + list each time so mobile summary persists
+  function renderCheckboxes(containerId, tokens){
+    const c = q(containerId);
+    if(!c) return;
+    c.innerHTML = '';
 
-const wrapper = document.createElement('div'); wrapper.className = 'multi-filter-list';
+    // summary header for mobile
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = c.getAttribute('aria-label') || 'Filter';
+    const chev = document.createElement('button');
+    chev.type = 'button'; chev.className = 'chev'; chev.setAttribute('aria-expanded','true'); chev.textContent = '▾';
+    summary.appendChild(label); summary.appendChild(chev);
 
-// tools
-const tools = document.createElement('div'); tools.className = 'controls';
-const allBtn = document.createElement('button'); allBtn.type='button'; allBtn.textContent='Select all';
-const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear'; clearBtn.disabled = true;
-tools.appendChild(allBtn); tools.appendChild(clearBtn);
+    const wrapper = document.createElement('div'); wrapper.className = 'multi-filter-list';
 
-// list
-const list = document.createElement('div'); list.style.maxHeight='220px'; list.style.overflow='auto';
+    // tools
+    const tools = document.createElement('div'); tools.className = 'controls';
+    const allBtn = document.createElement('button'); allBtn.type='button'; allBtn.textContent='Select all';
+    const clearBtn = document.createElement('button'); clearBtn.type='button'; clearBtn.textContent='Clear'; clearBtn.disabled = true;
+    tools.appendChild(allBtn); tools.appendChild(clearBtn);
 
-function updateClearState(){
-  const anyChecked = Array.from(list.querySelectorAll('input[type=checkbox]')).some(ch => ch.checked);
-  clearBtn.disabled = !anyChecked;
-}
+    // list
+    const list = document.createElement('div'); list.style.maxHeight='220px'; list.style.overflow='auto';
 
-tokens.forEach(tok=>{
-  const id = containerId + '_opt_' + tok.replace(/\s+/g,'_').replace(/[^\w-]/g,'');
-  const labelEl = document.createElement('label');
-  labelEl.style.display = 'block'; labelEl.style.fontSize = '13px'; labelEl.style.cursor = 'pointer';
-  labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${window.escapeHtml ? window.escapeHtml(tok) : tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
-  list.appendChild(labelEl);
-  const ch = labelEl.querySelector('input');
-  ch.addEventListener('change', ()=>{ updateClearState(); applyFilters(); });
-});
+    function updateClearState(){
+      const anyChecked = Array.from(list.querySelectorAll('input[type=checkbox]')).some(ch => ch.checked);
+      clearBtn.disabled = !anyChecked;
+    }
 
-wrapper.appendChild(tools); wrapper.appendChild(list);
-c.appendChild(summary); c.appendChild(wrapper);
+    tokens.forEach(tok=>{
+      const id = containerId + '_opt_' + tok.replace(/\s+/g,'_').replace(/[^\w-]/g,'');
+      const labelEl = document.createElement('label');
+      labelEl.style.display = 'block'; labelEl.style.fontSize = '13px'; labelEl.style.cursor = 'pointer';
+      labelEl.innerHTML = `<input type="checkbox" id="${id}" value="${window.escapeHtml ? window.escapeHtml(tok) : tok}"> ${window.escapeHtml ? window.escapeHtml(tok) : tok}`;
+      list.appendChild(labelEl);
+      const ch = labelEl.querySelector('input');
+      ch.addEventListener('change', ()=>{ updateClearState(); applyFilters(); });
+    });
 
-allBtn.onclick = ()=>{
-  list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true);
-  updateClearState(); applyFilters();
+    wrapper.appendChild(tools); wrapper.appendChild(list);
+    c.appendChild(summary); c.appendChild(wrapper);
+
+    allBtn.onclick = ()=>{
+      list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=true);
+      updateClearState(); applyFilters();
+    };
+    clearBtn.onclick = ()=>{
+      list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false);
+      updateClearState(); applyFilters();
+    };
+
+    function setCollapsed(collapsed){
+      if (collapsed){ c.classList.add('collapsed'); chev.textContent = '▸'; chev.setAttribute('aria-expanded','false'); }
+      else { c.classList.remove('collapsed'); chev.textContent = '▾'; chev.setAttribute('aria-expanded','true'); }
+    }
+    setCollapsed(true);
+    summary.addEventListener('click', ()=> setCollapsed(!c.classList.contains('collapsed')));
+    updateClearState();
+  }
+
+  renderCheckboxes('filter-type-container', types);
+  renderCheckboxes('filter-work-container', works);
+  renderCheckboxes('filter-character-container', chars);
+  renderCheckboxes('filter-image-container', imgs);
 };
-clearBtn.onclick = ()=>{
-  list.querySelectorAll('input[type=checkbox]').forEach(ch=>ch.checked=false);
-  updateClearState(); applyFilters();
-};
 
-function setCollapsed(collapsed){
-  if (collapsed){ c.classList.add('collapsed'); chev.textContent='▸'; chev.setAttribute('aria-expanded','false'); }
-  else { c.classList.remove('collapsed'); chev.textContent='▾'; chev.setAttribute('aria-expanded','true'); }
-}
-setCollapsed(true);
-summary.addEventListener('click', ()=> setCollapsed(!c.classList.contains('collapsed')));
-updateClearState();}
-
-renderCheckboxes('filter-type-container', types);
-renderCheckboxes('filter-work-container', works);
-renderCheckboxes('filter-character-container', chars);
-renderCheckboxes('filter-image-container', imgs);
-};
-
-// Remove from wishlist
 window.removeFromWishlist = function(id){
-wishlist.delete(id);
-localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
-window.applyFilters && window.applyFilters();
-if (q('modal') && q('modal').style.display === 'flex') renderWishlistModal();
+  wishlist.delete(id);
+  localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
+  window.applyFilters && window.applyFilters();
+  if (q('modal') && q('modal').style.display === 'flex') renderWishlistModal();
 };
 
-// applyFilters
 window.applyFilters = function(){
-function checkedTokens(containerId){
-const c = q(containerId);
-if(!c) return [];
-return Array.from(c.querySelectorAll('input[type=checkbox]:checked')).map(i=>i.value);
-}
+  function checkedTokens(containerId){
+    const c = q(containerId);
+    if(!c) return [];
+    return Array.from(c.querySelectorAll('input[type=checkbox]:checked')).map(i=>i.value);
+  }
 
-const typeSelected = checkedTokens('filter-type-container');
-const workSelected = checkedTokens('filter-work-container');
-const charSelected = checkedTokens('filter-character-container');
-const imgSelected = checkedTokens('filter-image-container');
+  const typeSelected = checkedTokens('filter-type-container');
+  const workSelected = checkedTokens('filter-work-container');
+  const charSelected = checkedTokens('filter-character-container');
+  const imgSelected = checkedTokens('filter-image-container');
 
-const type = q('filter-type') ? q('filter-type').value : '';
-const search = q('search') ? q('search').value.trim().toLowerCase() : '';
+  const type = q('filter-type') ? q('filter-type').value : '';
+  const search = q('search') ? q('search').value.trim().toLowerCase() : '';
 
-filtered = (items||[]).filter(it=>{
-if(type && !(it.type||[]).includes(type)) return false;
-if(typeSelected.length){
-const have = (it.type||[]).map(v=>v.toLowerCase());
-if(!typeSelected.every(tok => have.includes(tok.toLowerCase()))) return false;
-}
-if(workSelected.length){
-const have = (it.relevant_work||[]).map(v=>v.toLowerCase());
-if(!workSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
-}
-if(charSelected.length){
-const have = (it.relevant_character||[]).map(v=>v.toLowerCase());
-if(!charSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
-}
-if(imgSelected.length){
-const have = (it.relevant_image||[]).map(v=>v.toLowerCase());
-if(!imgSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
-}if(search){
-  const hay = ((it.title||'')+' '+(it.jp_title||'')+' '+(it.description||'')+' '+(it.relevant_work||'')+' '+(it.relevant_character||'')+' '+(it.detailed||'')).toLowerCase();
-  if(!hay.includes(search)) return false;
-}
-return true;});
+  filtered = (items||[]).filter(it=>{
+    if(type && !(it.type||[]).includes(type)) return false;
+    if(typeSelected.length){
+      const have = (it.type||[]).map(v=>v.toLowerCase());
+      if(!typeSelected.every(tok => have.includes(tok.toLowerCase()))) return false;
+    }
+    if(workSelected.length){
+      const have = (it.relevant_work||[]).map(v=>v.toLowerCase());
+      if(!workSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+    }
+    if(charSelected.length){
+      const have = (it.relevant_character||[]).map(v=>v.toLowerCase());
+      if(!charSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+    }
+    if(imgSelected.length){
+      const have = (it.relevant_image||[]).map(v=>v.toLowerCase());
+      if(!imgSelected.every(tok=>have.includes(tok.toLowerCase()))) return false;
+    }
 
+    if(search){
+      const hay = ((it.title||'')+' '+(it.jp_title||'')+' '+(it.description||'')+' '+(it.relevant_work||'')+' '+(it.relevant_character||'')+' '+(it.detailed||'')).toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const sort = q('sort') ? q('sort').value : 'title';
+  filtered.sort((a, b) => {
 const sort = q('sort') ? q('sort').value : 'title';
-filtered.sort((a, b) => {
+
 if (sort === 'added' || sort === 'newly_added') {
+// sort newest first (larger __rowIndex = newer row)
 const ai = (a && a.__rowIndex != null) ? a.__rowIndex : 0;
 const bi = (b && b.__rowIndex != null) ? b.__rowIndex : 0;
-return bi - ai; // newest first
+return bi - ai;
 }
+
 const va = (a && a[sort]) ? String(a[sort]) : '';
 const vb = (b && b[sort]) ? String(b[sort]) : '';
+
 if (sort === 'release_date') {
 const da = Date.parse(va) || 0;
 const db = Date.parse(vb) || 0;
 return db - da;
 }
+
 return va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' });
 });
 
-page = 1;
-window.renderPage && window.renderPage();
+  page = 1;
+  window.renderPage && window.renderPage();
 };
 
-// renderPage
 window.renderPage = function(){
-const start = (page - 1) * PAGE_SIZE;
-const slice = filtered.slice(start, start + PAGE_SIZE);
-const list = q('list'); if (!list) return; list.innerHTML = '';
-slice.forEach(it => {
-const card = document.createElement('div'); card.className = 'card'; card.dataset.id = it.id;
-const imgSrc = window.imgUrl ? window.imgUrl(it) : '';
-const typeText = (it.type || []).join(', ');
+  const start = (page - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+  const list = q('list'); if (!list) return; list.innerHTML = '';
+  slice.forEach(it => {
+    const card = document.createElement('div'); card.className = 'card'; card.dataset.id = it.id;
+    const imgSrc = window.imgUrl ? window.imgUrl(it) : '';
+    const typeText = (it.type || []).join(', ');
 card.innerHTML = `
 <img class="thumb" src="${window.escapeAttr ? window.escapeAttr(imgSrc) : imgSrc}" alt="">
 
-<div class="card-body"> <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong> <div class="meta">${window.escapeHtml ? window.escapeHtml(typeText) : typeText}</div> <div class="buttons"> <button class="detail-btn" aria-label="查看详情">详情</button> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/> </svg> </button> </div> </div>`; list.appendChild(card); const wlBtn = card.querySelector('button[data-id]'); if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn)); });
-const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-const prevBtn = q('prev'), nextBtn = q('next');
-if (prevBtn) prevBtn.disabled = (page <= 1);
-if (nextBtn) nextBtn.disabled = (page >= max);
-const pageInfo = q('page-info'); if (pageInfo) pageInfo.textContent =`Page ${page} / ${max} — ${filtered.length} results`;
+<div class="card-body"> <strong>${window.escapeHtml ? window.escapeHtml(it.title||it.jp_title||it.id) : (it.title||it.jp_title||it.id)}</strong> <div class="meta">${window.escapeHtml ? window.escapeHtml(typeText) : typeText}</div> <div class="buttons"> <button class="detail-btn" aria-label="查看详情">详情</button> <button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" > <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"> <path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/> </svg> </button> </div> </div>`; 
+    list.appendChild(card);
+    const wlBtn = card.querySelector('button[data-id]');
+    if (wlBtn) wlBtn.addEventListener('click', () => window.toggleWishlist && window.toggleWishlist(it.id, wlBtn));
+  });
+
+  const max = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const prevBtn = q('prev'), nextBtn = q('next');
+  if (prevBtn) prevBtn.disabled = (page <= 1);
+  if (nextBtn) nextBtn.disabled = (page >= max);
+  const pageInfo = q('page-info'); if (pageInfo) pageInfo.textContent = `Page ${page} / ${max} — ${filtered.length} results`;
 };
 
-// make filters collapsible on small screens
+// Make .multi-filter collapsible on small screens (kept for compatibility)
 function makeFiltersCollapsible() {
-if (!window.matchMedia) return;
-const mq = window.matchMedia('(max-width:600px)');
-function apply() {
-const should = mq.matches;
-document.querySelectorAll('.multi-filter').forEach(container => {
-if (container._hasSummary) {
-if (!should) container.classList.remove('collapsed');
-return;
-}
-const summary = document.createElement('div');
-summary.className = 'summary';
-const label = document.createElement('span'); label.className = 'label';
-label.textContent = container.getAttribute('aria-label') || 'Filter';
-const chev = document.createElement('button'); chev.type='button'; chev.className='chev'; chev.setAttribute('aria-expanded','true'); chev.textContent='▾';
-summary.appendChild(label); summary.appendChild(chev);
-container.prepend(summary);
-container._hasSummary = true;const wrapper = document.createElement('div'); wrapper.className = 'multi-filter-list';
-  while (container.children.length > 1) wrapper.appendChild(container.children[1]);
-  container.appendChild(wrapper);
+  if (!window.matchMedia) return;
+  const mq = window.matchMedia('(max-width:600px)');
+  function apply() {
+    const should = mq.matches;
+    document.querySelectorAll('.multi-filter').forEach(container => {
+      if (container._hasSummary) {
+        if (!should) container.classList.remove('collapsed');
+        return;
+      }
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      const label = document.createElement('span'); label.className = 'label';
+      label.textContent = container.getAttribute('aria-label') || 'Filter';
+      const chev = document.createElement('button'); chev.type='button'; chev.className='chev'; chev.setAttribute('aria-expanded','true'); chev.textContent='▾';
+      summary.appendChild(label); summary.appendChild(chev);
+      container.prepend(summary);
+      container._hasSummary = true;
 
-  function setCollapsed(collapsed) {
-    if (collapsed) { container.classList.add('collapsed'); chev.textContent='▸'; chev.setAttribute('aria-expanded','false'); }
-    else { container.classList.remove('collapsed'); chev.textContent='▾'; chev.setAttribute('aria-expanded','true'); }
+      const wrapper = document.createElement('div'); wrapper.className = 'multi-filter-list';
+      while (container.children.length > 1) wrapper.appendChild(container.children[1]);
+      container.appendChild(wrapper);
+
+      function setCollapsed(collapsed) {
+        if (collapsed) { container.classList.add('collapsed'); chev.textContent='▸'; chev.setAttribute('aria-expanded','false'); }
+        else { container.classList.remove('collapsed'); chev.textContent='▾'; chev.setAttribute('aria-expanded','true'); }
+      }
+      setCollapsed(true);
+      summary.addEventListener('click', ()=> setCollapsed(!container.classList.contains('collapsed')));
+    });
   }
-  setCollapsed(true);
-  summary.addEventListener('click', ()=> setCollapsed(!container.classList.contains('collapsed')));
-});}
-mq.addListener(apply);
-apply();
+  mq.addListener(apply);
+  apply();
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', makeFiltersCollapsible); else makeFiltersCollapsible();
 
-// openDetail: show modal with CSV columns (non-empty)
 window.openDetail = async function(id){
 try{
+// ensure we have original rows cached
 const originalRows = await loadOriginalRows();
 if(!window.items || !window.items.length){
 window.items = (originalRows || []).map((row, i) => normalizeRow(row, i));
@@ -412,32 +320,15 @@ if(!it){
 }
 if(!it){ console.warn('item not found', id); return; }
 
-// find corresponding raw row in originalRows (try several fallbacks)
-let rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
-if (!rawRow && it.image_filename) {
-  // try matching by image filename field (raw values may be filenames)
-  rawRow = (originalRows || []).find((r,i) => {
-    const v = r['image_filename'] || r.image_filename || '';
-    return v && String(v).trim() === String(it.image_filename || '').trim();
-  });
-}
-if (!rawRow) {
-  // try matching by Chinese title or Japanese title (raw CSV header may vary)
-  rawRow = (originalRows || []).find((r) => {
-    const cand1 = getByCanon(r, '中文名字 Chinese Name', '中文名字', 'Chinese Name');
-    const cand2 = getByCanon(r, '日文名字 Japanese Name', '日文名字', 'Japanese Name');
-    const c1 = cand1 ? String(cand1).trim() : '';
-    const c2 = cand2 ? String(cand2).trim() : '';
-    const t = String(it.title || '').trim();
-    const j = String(it.jp_title || '').trim();
-    return (c1 && t && c1 === t) || (c2 && j && c2 === j);
-  });
-}
+// find corresponding raw row in originalRows
+const rawRow = (originalRows || []).find((r,i) => rowIdFromRaw(r,i) === (it.id || ''));
 
+// Build ordered headers (CSV order preferred)
 const headers = Array.isArray(window.CSV_HEADERS) && window.CSV_HEADERS.length
   ? window.CSV_HEADERS.slice()
   : (rawRow ? Object.keys(rawRow) : Object.keys(it));
 
+// helpers
 function humanizeKey(key){
   if(!key) return '';
   const s = key.replace(/[_\-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'\$1 \$2').toLowerCase().trim();
@@ -455,6 +346,7 @@ function looksLikeImageKey(k){
   return /(^|[_\s\-\/])(?:image|img|thumb|poster|cover|src|file|filename|url|photo)(?:$|[_\s\-\/])/i.test(k) || /image|img|thumb|poster|cover|src|file|filename|url|photo/i.test(k);
 }
 
+// collect non-empty rows (prefer rawRow values so newly added CSV columns show)
 const rows = [];
 headers.forEach(key => {
   if (!key) return;
@@ -468,6 +360,7 @@ headers.forEach(key => {
   rows.push({ key, value: val });
 });
 
+// fallback: use normalized properties if nothing found
 if(rows.length === 0){
   Object.keys(it).forEach(key => {
     const raw = it[key];
@@ -478,134 +371,91 @@ if(rows.length === 0){
   });
 }
 
-// === robust details builder + safe insertion (replace the older html-building + insertion) ===
-let html = '<div style="max-width:900px;margin:0 auto">';
-const title = (it && (it.title || it.jp_title || it.id)) || (rawRow && ((typeof getByCanon === 'function' && (getByCanon(rawRow,'中文名字 Chinese Name')||getByCanon(rawRow,'日文名字 Japanese Name'))) || rawRow.image_filename || cleaned));
-html += '<h2 style="margin:0 0 .6rem 0">' + (window.escapeHtml ? window.escapeHtml(title) : (title||'')) + '</h2>';
+// Build HTML: NOTE we intentionally DO NOT render the old left-side image
+// nor the normalized it.detailed paragraph — we rely on CSV columns only.
+let html = `<div style="max-width:900px;margin:0 auto">`;
+html += `<h2 style="margin:0 0 .6rem 0">${window.escapeHtml(it.title||it.jp_title||it.id)}</h2>`;
 
-// build outputRows defensively
-const outputRows = [];
-headers.forEach(function(key){
-if (!key) return;
-let val;
-if (rawRow && Object.prototype.hasOwnProperty.call(rawRow, key)) val = rawRow[key];
-else if (it && Object.prototype.hasOwnProperty.call(it, key)) val = it[key];
-else return;
-if (Array.isArray(val)) val = val.join(', ');
-val = val == null ? '' : String(val);
-if (!val.trim()) return;
-outputRows.push({ key: key, value: val });
-});
-if (outputRows.length === 0) {
-Object.keys(it || {}).forEach(function(k){
-const raw = it[k];
-if (raw === undefined || raw === null) return;
-const v = Array.isArray(raw) ? raw.join(', ') : String(raw);
-if (!v.trim()) return;
-outputRows.push({ key: k, value: v });
-});
-}
-
-function humanizeKey(key){
-if(!key) return '';
-const s = key.replace(/[_-]+/g,' ').replace(/([a-z0-9])([A-Z])/g,'$1 $2').toLowerCase().trim();
-return s.split(' ').map(function(p){ return p.charAt(0).toUpperCase()+p.slice(1); }).join(' ');
-}
-function isUrlLike(v){ return v && /(https?:)?///i.test(String(v)); }
-function looksLikeImageFilenameOrUrl(v){
-if(!v) return false;
-const s = String(v).trim();
-if (s.indexOf('data:') === 0) return true;
-if (/(https?:)?///i.test(s) && /.(jpe?g|png|gif|webp|avif|svg)(?:[?#].)?$/i.test(s)) return true;
-return /.(jpe?g|png|gif|webp|avif|svg)(?:[?#].)?$/i.test(s);
-}
-
-html += '<dl style="margin:0">';
-outputRows.forEach(function(r){
+// render rows as <dl>, letting image-like columns render images if the VALUE looks like a filename/URL
+html += `<dl style="margin:0">`;
+rows.forEach(r => {
 const label = humanizeKey(r.key);
-const v = (r.value||'').toString().trim();
+const v = r.value.trim();
+let rendered = '';
 
-const keyLooksImage = /(^|[\s-/])(?:image|img|thumb|poster|cover|src|file|filename|url|photo)(?:$|[\s-/])/i.test(r.key) ||
-/image|img|thumb|poster|cover|src|file|filename|url|photo/i.test(r.key);
+const keyLooksImage = looksLikeImageKey(r.key);
 const valueLooksImage = looksLikeImageFilenameOrUrl(v);
 
-let rendered = '';
 if (keyLooksImage && valueLooksImage) {
+// Render as image; if filename-only, prefix IMAGES_FOLDER
 let src = v;
-if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) src = (window.IMAGES_FOLDER || 'images/') + src;
-rendered = '<div style="margin:6px 0"><img src="' + (window.escapeAttr ? window.escapeAttr(src) : src) + '" alt="' + (window.escapeAttr ? window.escapeAttr(label) : label) + '" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>';
+if (!isUrlLike(src) && !src.startsWith('data:') && !/^[a-z]+:/i.test(src)) {
+src = IMAGES_FOLDER + src;
+}
+rendered =`<div style="margin:6px 0"><img src="${window.escapeAttr(src)}" alt="${window.escapeAttr(label)}" style="max-width:100%;height:auto;border:1px solid #eee;border-radius:6px;"></div>`;
 } else if (isUrlLike(v)) {
-rendered = '<a href="' + (window.escapeAttr ? window.escapeAttr(v) : v) + '" target="_blank" rel="noopener noreferrer">' + (window.escapeHtml ? window.escapeHtml(v) : v) + '</a>';
+rendered =`<a href="${window.escapeAttr(v)}" target="_blank" rel="noopener noreferrer">${window.escapeHtml(v)}</a>`;
 } else {
-rendered = '<div style="white-space:pre-wrap;word-break:break-word;">' + (window.escapeHtml ? window.escapeHtml(v) : v) + '</div>';
+rendered = `<div style="white-space:pre-wrap;word-break:break-word;">${window.escapeHtml(v)}</div>`;
 }
 
+// Hide the label when the column is the image filename column (keep the image itself)
 const hideLabel = /^image[_\s-]?filename$/i.test(r.key) || (label && label.toLowerCase() === 'image filename');
+
 if (hideLabel) {
-html += '<dd style="margin:4px 0 0 0">' + rendered + '</dd>';
+// only output the value (image or text) without a heading
+html +=`<dd style="margin:4px 0 0 0">${rendered}</dd>`;
 } else {
-html += '<dt style="font-weight:600;margin-top:12px">' + (window.escapeHtml ? window.escapeHtml(label) : label) + '</dt><dd style="margin:4px 0 0 0">' + rendered + '</dd>';
+html += `<dt style="font-weight:600;margin-top:12px">${window.escapeHtml(label)}</dt><dd style="margin:4px 0 0 0">${rendered}</dd>`;
 }
 });
-html += '</dl>';
+html += `</dl>`;
 
-// wishlist control
-html += '<div style="margin-top:12px"><button class="wishlist-toggle ' + (wishlist.has(it && it.id ? it.id : '') ? 'in' : '') + '" data-id="' + (window.escapeAttr ? window.escapeAttr(it && it.id ? it.id : cleaned) : (it && it.id ? it.id : cleaned)) + '" aria-pressed="' + (wishlist.has(it && it.id ? it.id : '') ? 'true' : 'false') + '" aria-label="' + (wishlist.has(it && it.id ? it.id : '') ? 'Remove from wishlist' : 'Add to wishlist') + '">' + (wishlist.has(it && it.id ? it.id : '') ? '♥' : '♡') + '</button></div>';
-html += '</div>';
+// wishlist toggle at the bottom
+html += `<div style="margin-top:12px">`;
+html += `<button class="wishlist-toggle ${wishlist.has(it.id) ? 'in' : ''}" data-id="${window.escapeAttr ? window.escapeAttr(it.id) : it.id}" aria-pressed="${wishlist.has(it.id) ? 'true' : 'false'}" aria-label="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" title="${wishlist.has(it.id) ? 'Remove from wishlist' : 'Add to wishlist'}" onclick="window.toggleWishlist && window.toggleWishlist('${window.escapeAttr ? window.escapeAttr(it.id) : it.id}', this)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="heart-shape" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>`;
+html += `</div>`;
 
-// safe insertion + reapply
-(function(){
-const modalEl = q('modal');
-const contentEl = q('modal-content');
-if (!contentEl) { if (modalEl) modalEl.style.display = 'flex'; return; }
-contentEl.innerHTML = html;
-contentEl.__lastBuiltHtmlForDebug = html;
-if (modalEl) { modalEl.style.display = 'flex'; modalEl.setAttribute('aria-hidden','false'); }
-setTimeout(() => { if ((contentEl.innerHTML||'').trim() !== (html||'').trim()) contentEl.innerHTML = html; }, 100);
-setTimeout(() => { if ((contentEl.innerHTML||'').trim() !== (html||'').trim()) contentEl.innerHTML = html; }, 300);
-})();
-// === end replacement ===}catch(e){
+html += `</div>`;
+
+if(window.openModal) window.openModal(html); else alert(it.title||it.id);}catch(e){
 console.error('openDetail error', e);
 }
 };
 
-// pagination
 function goPage(delta){
-const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
-page = Math.min(max, Math.max(1, page + delta));
-renderPage();
+  const max = Math.max(1, Math.ceil((filtered||[]).length / PAGE_SIZE));
+  page = Math.min(max, Math.max(1, page + delta));
+  renderPage();
 }
 
-// detail button delegation
 (function(){
-const listEl = q('list');
-if(!listEl) return;
-if(listEl._detailDelegation) return;
-listEl._detailDelegation = function(e){
-const btn = e.target.closest('.detail-btn');
-if(!btn) return;
-const card = btn.closest('.card');
-const idBtn = card && card.querySelector('button[data-id]');
-const id = idBtn ? idBtn.getAttribute('data-id') : (card && card.dataset && card.dataset.id);
-if(id) window.openDetail && window.openDetail(id);
-};
-listEl.addEventListener('click', listEl._detailDelegation);
+  const listEl = q('list');
+  if(!listEl) return;
+  if(listEl._detailDelegation) return;
+  listEl._detailDelegation = function(e){
+    const btn = e.target.closest('.detail-btn');
+    if(!btn) return;
+    const card = btn.closest('.card');
+    const idBtn = card && card.querySelector('button[data-id]');
+    const id = idBtn ? idBtn.getAttribute('data-id') : (card && card.dataset && card.dataset.id);
+    if(id) window.openDetail && window.openDetail(id);
+  };
+  listEl.addEventListener('click', listEl._detailDelegation);
 })();
 
-// modal open/close
 window.openModal = function(html){
-const modal = q('modal'); const content = q('modal-content');
-if (!modal || !content) return;
-content.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false');
+  const modal = q('modal'); const content = q('modal-content');
+  if (!modal || !content) return;
+  content.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false');
 };
 window.closeModal = function(){ const modal = q('modal'); if (!modal) return; modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); };
 const closeBtn = q('close-modal');
 if (closeBtn) closeBtn.addEventListener('click', () => window.closeModal && window.closeModal());
 
-// wishlist toggle
 window.toggleWishlist = function(id, btn){
-const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);
-if (wishlist.has(id)){
+// locate button if not provided
+const selectorBtn = btn || document.querySelector(`button.wishlist-toggle[data-id="${id}"]`);if (wishlist.has(id)){
 wishlist.delete(id);
 if (selectorBtn){
 selectorBtn.classList.remove('in');
@@ -620,82 +470,96 @@ selectorBtn.classList.add('in');
 selectorBtn.setAttribute('aria-pressed','true');
 selectorBtn.setAttribute('aria-label','Remove from wishlist');
 selectorBtn.setAttribute('title','Remove from wishlist');
+// pop animation
 selectorBtn.classList.add('pop');
 setTimeout(()=>selectorBtn.classList.remove('pop'), 160);
 }
 }
 localStorage.setItem('wanted', JSON.stringify(Array.from(wishlist)));
+// Update any other UI dependent on wishlist state
+// e.g., refresh list labels if you rely on text elsewhere:
+// renderPage();
 };
 
 // CSV export helpers
 async function loadOriginalRows(){
-if (window._originalRows) return window.originalRows;
-const txt = await fetch('data.csv?=' + Date.now()).then(r => r.text());
-const parsed = (typeof Papa !== 'undefined') ? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data : [];
-window._originalRows = parsed;
-return parsed;
+  if (window._originalRows) return window._originalRows;
+  const txt = await fetch('data.csv?_=' + Date.now()).then(r => r.text());
+  const parsed = (typeof Papa !== 'undefined') ? Papa.parse(txt.trim(), { header: true, skipEmptyLines: true }).data : [];
+  window._originalRows = parsed;
+  return parsed;
 }
-function rowIdFromRaw(row, i){ return ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^$/, ''); }
+function rowIdFromRaw(row, i){ return ((row['image_filename'] || row.image_filename || ('i' + i)) + '').toString().trim().replace(/^\$/, ''); }
 function downloadBlob(blob, filename){ const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
 function timestampForFilename(){ const d = new Date(); const pad = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`; }
 
 async function exportWishlistCSV(filename){
-if (!wishlist || wishlist.size === 0) { alert('Wishlist is empty — nothing to export.'); return; }
-const usedFilename = filename ||`wishlist-${timestampForFilename()}.csv`;
-try {
-const originalRows = await loadOriginalRows();
-const idToRows = new Map();
-(originalRows || []).forEach((r,i)=>{ const id = rowIdFromRaw(r,i); if (!idToRows.has(id)) idToRows.set(id,[]); idToRows.get(id).push(r); });
-const outRows = [];
-Array.from(wishlist).forEach(id => {
-const rows = idToRows.get(id);
-if (rows && rows.length) rows.forEach(r => outRows.push(r));
-else outRows.push({ id });
-});
-let csv;
-if (typeof Papa !== 'undefined' && typeof Papa.unparse === 'function') csv = Papa.unparse(outRows);
-else {
-const keys = Array.from(outRows.reduce((s,r)=>{ Object.keys(r||{}).forEach(k=>s.add(k)); return s; }, new Set()));
-const lines = [keys.join(',')];
-outRows.forEach(r=>{ lines.push(keys.map(k=>{ const v = r[k] == null ? '' : String(r[k]).replace(/"/g,'""'); return`"${v}"`; }).join(',')); });
-csv = lines.join('\n');
-}
-const bom = '\uFEFF';
-const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-downloadBlob(blob, usedFilename);
-} catch (err) {
-console.error('Export failed', err);
-alert('Export failed: ' + (err && err.message ? err.message : err));
-}
+  if (!wishlist || wishlist.size === 0) { alert('Wishlist is empty — nothing to export.'); return; }
+  const usedFilename = filename || `wishlist-${timestampForFilename()}.csv`;
+  try {
+    const originalRows = await loadOriginalRows();
+    const idToRows = new Map();
+    (originalRows || []).forEach((r,i)=>{ const id = rowIdFromRaw(r,i); if (!idToRows.has(id)) idToRows.set(id,[]); idToRows.get(id).push(r); });
+    const outRows = [];
+    Array.from(wishlist).forEach(id => {
+      const rows = idToRows.get(id);
+      if (rows && rows.length) rows.forEach(r => outRows.push(r));
+      else outRows.push({ id });
+    });
+    let csv;
+    if (typeof Papa !== 'undefined' && typeof Papa.unparse === 'function') csv = Papa.unparse(outRows);
+    else {
+      const keys = Array.from(outRows.reduce((s,r)=>{ Object.keys(r||{}).forEach(k=>s.add(k)); return s; }, new Set()));
+      const lines = [keys.join(',')];
+      outRows.forEach(r=>{ lines.push(keys.map(k=>{ const v = r[k] == null ? '' : String(r[k]).replace(/"/g,'""'); return `"${v}"`; }).join(',')); });
+      csv = lines.join('\n');
+    }
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+    downloadBlob(blob, usedFilename);
+  } catch (err) {
+    console.error('Export failed', err);
+    alert('Export failed: ' + (err && err.message ? err.message : err));
+  }
 }
 
 const exportBtn = q('export-wishlist');
 if (exportBtn) exportBtn.addEventListener('click', () => exportWishlistCSV());
 
-// search and sort handlers
 let applyTimeout;
 const searchEl = q('search');
 if (searchEl) searchEl.addEventListener('input', () => { clearTimeout(applyTimeout); applyTimeout = setTimeout(() => window.applyFilters && window.applyFilters(), 250); });
 const sortEl = q('sort');
 if (sortEl) {
-sortEl.addEventListener('change', () => { window.applyFilters && window.applyFilters(); });
-sortEl.addEventListener('input', () => { window.applyFilters && window.applyFilters(); });
+// call applyFilters whenever user picks a different sort option
+sortEl.addEventListener('change', () => {
+window.applyFilters && window.applyFilters();
+});
+// optional: respond to keyboard changes immediately in some browsers
+sortEl.addEventListener('input', () => {
+window.applyFilters && window.applyFilters();
+});
 }
-
-// wishlist modal rendering
 function renderWishlistModal(){
 const modal = q('modal');
 const content = q('modal-content');
 if (!modal || !content) return;
+
+// localize modal close button
 const closeBtn = q('close-modal');
 if (closeBtn) closeBtn.textContent = '关闭';
+
+// clear previous
 content.innerHTML = '';
+
 const container = document.createElement('div');
 
+// Title
 const h = document.createElement('h3');
 h.textContent =`心愿单 (${wishlist.size})`;
 container.appendChild(h);
 
+// List items
 if (wishlist.size === 0) {
 const empty = document.createElement('div');
 empty.textContent = '心愿单中空空如也~';
@@ -704,39 +568,70 @@ container.appendChild(empty);
 } else {
 Array.from(wishlist).forEach(id => {
 const it = items.find(x => x.id === id) || { id };
+
 const row = document.createElement('div');
-row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.justifyContent = 'space-between';
-row.style.gap = '8px'; row.style.padding = '8px 0'; row.style.borderBottom = '1px solid #eee';const left = document.createElement('div'); left.style.flex = '1';
+  row.style.display = 'flex';
+  row.style.alignItems = 'center';
+  row.style.justifyContent = 'space-between';
+  row.style.gap = '8px';
+  row.style.padding = '8px 0';
+  row.style.borderBottom = '1px solid #eee';
+
+  const left = document.createElement('div');
+  left.style.flex = '1';
   left.textContent = it.title || it.jp_title || it.id;
 
-  const right = document.createElement('div'); right.style.display = 'flex'; right.style.alignItems = 'center';
+  const right = document.createElement('div');
+  right.style.display = 'flex';
+  right.style.alignItems = 'center';
 
-  const detailsBtn = document.createElement('button'); detailsBtn.type = 'button'; detailsBtn.className = 'details-btn';
-  detailsBtn.textContent = '详情'; detailsBtn.style.marginRight = '10px';
-  detailsBtn.addEventListener('click', () => { window.openDetail && window.openDetail(id); });
+  const detailsBtn = document.createElement('button');
+  detailsBtn.type = 'button';
+  detailsBtn.className = 'details-btn';
+  detailsBtn.textContent = '详情';
+  detailsBtn.style.marginRight = '10px'; // spacing between 详情 and 移出
+  detailsBtn.addEventListener('click', () => {
+    // keep modal open; if you prefer closing first, call window.closeModal()
+    window.openDetail && window.openDetail(id);
+  });
 
-  const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'remove-btn';
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'remove-btn';
   removeBtn.textContent = '移出';
-  removeBtn.addEventListener('click', () => { window.removeFromWishlist && window.removeFromWishlist(id); renderWishlistModal(); });
+  removeBtn.addEventListener('click', () => {
+    window.removeFromWishlist && window.removeFromWishlist(id);
+    // refresh modal contents
+    renderWishlistModal();
+  });
 
-  right.appendChild(detailsBtn); right.appendChild(removeBtn);
-  row.appendChild(left); row.appendChild(right);
+  right.appendChild(detailsBtn);
+  right.appendChild(removeBtn);
+
+  row.appendChild(left);
+  row.appendChild(right);
   container.appendChild(row);
 });}
 
-const exportRow = document.createElement('div'); exportRow.style.marginTop = '12px';
-const exportBtn2 = document.createElement('button'); exportBtn2.type = 'button'; exportBtn2.id = 'download-wishlist'; exportBtn2.textContent = '导出心愿单';
-exportBtn2.addEventListener('click', () => exportWishlistCSV());
-exportRow.appendChild(exportBtn2);
+// Export button row (Chinese)
+const exportRow = document.createElement('div');
+exportRow.style.marginTop = '12px';
+const exportBtn = document.createElement('button');
+exportBtn.type = 'button';
+exportBtn.id = 'download-wishlist';
+exportBtn.textContent = '导出心愿单';
+exportBtn.addEventListener('click', () => exportWishlistCSV());
+exportRow.appendChild(exportBtn);
 container.appendChild(exportRow);
 
 content.appendChild(container);
-modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false');
+
+// show modal
+modal.style.display = 'flex';
+modal.setAttribute('aria-hidden', 'false');
 }
 
 const openWishlistBtn = q('open-wishlist');
 if (openWishlistBtn) openWishlistBtn.addEventListener('click', renderWishlistModal);
-
-// cleanup leftover zoom overlay if present
+// Cleanup leftover zoom overlay if present
 const _oldZoom = document.getElementById('zoom-overlay'); if (_oldZoom) _oldZoom.remove();
-

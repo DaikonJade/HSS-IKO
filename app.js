@@ -182,6 +182,19 @@ badge.textContent = count > 0 ? String(count) : '';
 badge.style.display = count > 0 ? 'inline-block' : 'none';
 }
 
+// Update global Clear button enabled/visual state
+function updateClearAllState() {
+const totalChecked = document.querySelectorAll('.multi-filter input[type="checkbox"]:checked').length;
+const clearAllBtn = q('clear-all-filters');
+if (!clearAllBtn) return;
+// disable when 0, enable otherwise
+clearAllBtn.disabled = (totalChecked === 0);
+// toggle ghost class so it appears gray when disabled and blue when active
+clearAllBtn.classList.toggle('ghost', totalChecked === 0);
+// keep ARIA in sync
+clearAllBtn.setAttribute('aria-disabled', clearAllBtn.disabled ? 'true' : 'false');
+}
+
 // attach listeners for all filters (idempotent)
 function attachFilterBadges() {
 document.querySelectorAll('.multi-filter').forEach(c => {
@@ -190,22 +203,32 @@ updateFilterBadge(c);
 // add change listeners once
 if (c._badgeInit) return;
 c.querySelectorAll('input[type="checkbox"]').forEach(ch => {
-ch.addEventListener('change', () => updateFilterBadge(c));
+ch.addEventListener('change', () => {
+updateFilterBadge(c);
+updateClearAllState();          // update global button whenever a checkbox changes
+});
 });
 c._badgeInit = true;
 });
+// update clear all state after attaching
+updateClearAllState();
 }
 
 // Clear all filters and update badges + apply filters
 function clearAllFilters() {
 document.querySelectorAll('.multi-filter input[type="checkbox"]').forEach(ch => { ch.checked = false; });
 document.querySelectorAll('.multi-filter').forEach(c => updateFilterBadge(c));
+updateClearAllState();             // ensure the Clear button is disabled again
 if (typeof window.applyFilters === 'function') window.applyFilters();
 }
 
 // wire the global button (if present)
 const clearAllBtn = q('clear-all-filters');
-if (clearAllBtn) clearAllBtn.addEventListener('click', clearAllFilters);
+if (clearAllBtn) {
+clearAllBtn.addEventListener('click', clearAllFilters);
+// set initial state (in case page loaded with some filters checked)
+updateClearAllState();
+}
 
 // initial attach (in case filters already present)
 attachFilterBadges();
@@ -215,13 +238,17 @@ attachFilterBadges();
 let _badgeDeb;
 const obs = new MutationObserver(() => {
 clearTimeout(_badgeDeb);
-_badgeDeb = setTimeout(() => attachFilterBadges(), 120);
+_badgeDeb = setTimeout(() => {
+attachFilterBadges();
+updateClearAllState();
+}, 120);
 });
 obs.observe(document.body, { childList: true, subtree: true });
 
 // Expose helpers for debugging (optional)
 window._attachFilterBadges = attachFilterBadges;
 window._clearAllFilters = clearAllFilters;
+window._updateClearAllState = updateClearAllState;
 })();
 
 window.removeFromWishlist = function(id){

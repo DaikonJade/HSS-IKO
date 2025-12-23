@@ -298,7 +298,7 @@ if(search){
 }
 return true;});
 
-const sort = q('sort') ? q('sort').value : 'title';
+const sort = q('sort') ? q('sort').value : 'newly_added';
 filtered.sort((a, b) => {
 if (sort === 'added' || sort === 'newly_added') {
 const ai = (a && a.__rowIndex != null) ? a.__rowIndex : 0;

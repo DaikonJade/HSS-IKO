@@ -27,6 +27,7 @@ function normalizeRow(row, i){
     relevant_work: splitTags(row['相关作品 Relevant Work'] || row['相关作品'] || row.relevant_work),
     relevant_character: splitTags(row['相关人物 Relevant Character'] || row['相关人物'] || row.relevant_character),
     relevant_image: splitTags(row['相关柄图 Relevant Image'] || row['相关柄图'] || row.relevant_image),
+    relevant_event: splitTags(row['相关活动 Relevant Event'] || row['相关活动'] || row.relevant_event),
     releaser: splitTags(row['Releaser/Event 发行商'] || row['发行商'] || row.relevant_event),
     release_date: (row['发行日期 Release Year/Date'] || row['发行日期'] || '').toString().trim(),
     release_price: (row['发行价格 Release Price (JPY)'] || row['发行价格'] || '').toString().trim(),
@@ -87,6 +88,7 @@ window.populateFilters = function(){
   const works = unique((items||[]).flatMap(i=>i.relevant_work || []));
   const chars = unique((items||[]).flatMap(i=>i.relevant_character || []));
   const imgs = unique((items||[]).flatMap(i=>i.relevant_image || []));
+  const events = unique((items||[]).flatMap(i=>i.relevant_event || []));
 
   const selType = q('filter-type');
   if(selType){
@@ -294,11 +296,11 @@ if(imgSelected.length){
 }
   if(eventSelected.length){
   const have = (it.relevant_event||[]).map(v=>v.toLowerCase());
-  if(!imgSelected.some(tok=>have.includes(tok.toLowerCase()))) return false;
+  if(!eventSelected.some(tok=>have.includes(tok.toLowerCase()))) return false;
 }
 
 if(search){
-  const hay = ((it.title||'')+' '+(it.jp_title||'')+' '+(it.description||'')+' '+(it.relevant_work||'')+' '+(it.relevant_character||'')+' '+(it.detailed||'')).toLowerCase();
+  const hay = ((it.title||'')+' '+(it.jp_title||'')+' '+(it.description||'')+' '+(it.relevant_work||'')+' '+(it.relevant_character||'')+''+(it.relevant_event||'')+' '+(it.detailed||'')).toLowerCase();
   if(!hay.includes(search)) return false;
 }
 return true;});

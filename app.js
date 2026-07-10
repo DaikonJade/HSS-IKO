@@ -161,6 +161,7 @@ window.populateFilters = function(){
   renderCheckboxes('filter-work-container', works);
   renderCheckboxes('filter-character-container', chars);
   renderCheckboxes('filter-image-container', imgs);
+  renderCheckboxes('filter-event-container', events);
 };
 (function(){
 // update badge inside a .multi-filter .summary to show number of checked options
@@ -269,7 +270,7 @@ const typeSelected = checkedTokens('filter-type-container');
 const workSelected = checkedTokens('filter-work-container');
 const charSelected = checkedTokens('filter-character-container');
 const imgSelected = checkedTokens('filter-image-container');
-
+const eventSelected = checkedTokens('filter-event-container');
 const type = q('filter-type') ? q('filter-type').value : '';
 const search = q('search') ? q('search').value.trim().toLowerCase() : '';
 
@@ -289,6 +290,10 @@ if(charSelected.length){
 }
 if(imgSelected.length){
   const have = (it.relevant_image||[]).map(v=>v.toLowerCase());
+  if(!imgSelected.some(tok=>have.includes(tok.toLowerCase()))) return false;
+}
+  if(eventSelected.length){
+  const have = (it.relevant_event||[]).map(v=>v.toLowerCase());
   if(!imgSelected.some(tok=>have.includes(tok.toLowerCase()))) return false;
 }
 
